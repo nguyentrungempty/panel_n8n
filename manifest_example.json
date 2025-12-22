@@ -1,0 +1,15 @@
+{
+  "version": "3.0",
+  "release_date": "2025-12-02",
+  "architecture": "modular",
+  "description": "Example manifest file for N8N Panel v3",
+  "note": "This is an example file. The actual manifest.json is used by the update system.",
+  "files": {
+    "example_file.sh": {
+      "path": "example_folder",
+      "url": "https://example.com/example_file.sh",
+      "required": false,
+      "version": "1.0"
+    }
+  }
+}
