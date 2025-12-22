@@ -55,146 +55,146 @@
   "files": {
     "n8n.sh": {
       "path": "root",
-      "url": "https://drive.inet.vn/uploads/v3/n8n.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/n8n.sh",
       "required": true,
       "version": "3.2"
     },
     "hook.py": {
       "path": "hook",
-      "url": "https://drive.inet.vn/uploads/v3/hook.py",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/hook.py",
       "required": false,
       "version": "3.1",
       "install_path": "/opt/n8n/hook.py"
     },
     "STRUCTURE.txt": {
       "path": "root",
-      "url": "https://drive.inet.vn/uploads/v3/STRUCTURE.txt",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/STRUCTURE.txt",
       "required": false,
       "version": "3.1"
     },
     "common/utils.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/utils.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/utils.sh",
       "required": true,
       "version": "3.1"
     },
     "common/network.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/network.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/network.sh",
       "required": true,
       "version": "3.1"
     },
     "common/nginx_manager.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/nginx_manager.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/nginx_manager.sh",
       "required": true,
       "version": "3.1"
     },
     "common/env_manager.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/env_manager.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/env_manager.sh",
       "required": true,
       "version": "3.1"
     },
     "common/domain_manager.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/domain_manager.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/domain_manager.sh",
       "required": true,
       "version": "3.1"
     },
     "common/restart_manager.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/restart_manager.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/restart_manager.sh",
       "required": true,
       "version": "3.1"
     },
     "common/instance_selector.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/instance_selector.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/instance_selector.sh",
       "required": true,
       "version": "3.1"
     },
     "common/domain_change_wrapper.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/domain_change_wrapper.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/domain_change_wrapper.sh",
       "required": true,
       "version": "3.1"
     },
     "common/nginx_config_wrapper.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/nginx_config_wrapper.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/nginx_config_wrapper.sh",
       "required": true,
       "version": "3.1"
     },
     "common/ssl_manager.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/ssl_manager.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/ssl_manager.sh",
       "required": true,
       "version": "3.1"
     },
     "common/ssl_install_wrapper.sh": {
       "path": "common",
-      "url": "https://drive.inet.vn/uploads/v3/common/ssl_install_wrapper.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/common/ssl_install_wrapper.sh",
       "required": true,
       "version": "3.1"
     },
     "1_Cai_dat_n8n_moi/install.sh": {
       "path": "1_Cai_dat_n8n_moi",
-      "url": "https://drive.inet.vn/uploads/v3/1_Cai_dat_n8n_moi/install.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/1_Cai_dat_n8n_moi/install.sh",
       "required": true,
       "version": "3.1"
     },
     "2_Quan_ly_Backup/backup.sh": {
       "path": "2_Quan_ly_Backup",
-      "url": "https://drive.inet.vn/uploads/v3/2_Quan_ly_Backup/backup.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/2_Quan_ly_Backup/backup.sh",
       "required": true,
       "version": "3.1"
     },
     "3_Quan_ly_SSL/ssl.sh": {
       "path": "3_Quan_ly_SSL",
-      "url": "https://drive.inet.vn/uploads/v3/3_Quan_ly_SSL/ssl.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/3_Quan_ly_SSL/ssl.sh",
       "required": true,
       "version": "3.1"
     },
     "4_Quan_ly_Docker_Container/docker.sh": {
       "path": "4_Quan_ly_Docker_Container",
-      "url": "https://drive.inet.vn/uploads/v3/4_Quan_ly_Docker_Container/docker.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/4_Quan_ly_Docker_Container/docker.sh",
       "required": true,
       "version": "3.1"
     },
     "5_Quan_ly_N8N/manage.sh": {
       "path": "5_Quan_ly_N8N",
-      "url": "https://drive.inet.vn/uploads/v3/5_Quan_ly_N8N/manage.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/5_Quan_ly_N8N/manage.sh",
       "required": true,
       "version": "3.1"
     },
     "6_Xem_thong_tin_he_thong/system_info.sh": {
       "path": "6_Xem_thong_tin_he_thong",
-      "url": "https://drive.inet.vn/uploads/v3/6_Xem_thong_tin_he_thong/system_info.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/6_Xem_thong_tin_he_thong/system_info.sh",
       "required": true,
       "version": "3.1"
     },
     "7_Cap_nhat/update.sh": {
       "path": "7_Cap_nhat",
-      "url": "https://drive.inet.vn/uploads/v3/7_Cap_nhat/update.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/7_Cap_nhat/update.sh",
       "required": true,
       "version": "3.2"
     },
     "7_Cap_nhat/version_manager.sh": {
       "path": "7_Cap_nhat",
-      "url": "https://drive.inet.vn/uploads/v3/7_Cap_nhat/version_manager.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/7_Cap_nhat/version_manager.sh",
       "required": true,
       "version": "3.2"
     },
     "8_Multi_Instance/multi_instance.sh": {
       "path": "8_Multi_Instance",
-      "url": "https://drive.inet.vn/uploads/v3/8_Multi_Instance/multi_instance.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/8_Multi_Instance/multi_instance.sh",
       "required": true,
       "version": "3.1"
     },
     "9_Go_cai_dat/uninstall.sh": {
       "path": "9_Go_cai_dat",
-      "url": "https://drive.inet.vn/uploads/v3/9_Go_cai_dat/uninstall.sh",
+      "url": "https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/9_Go_cai_dat/uninstall.sh",
       "required": true,
       "version": "3.1"
     }

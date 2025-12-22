@@ -30,7 +30,7 @@ version_greater_than() {
 }
 
 download_remote_manifest() {
-    local manifest_url="${MANIFEST_URL:-https://drive.inet.vn/uploads/v3/manifest.json}"
+    local manifest_url="${MANIFEST_URL:-https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/manifest.json}"
     local manifest_file="/tmp/n8n_manifest_remote_$(date +%s).json"
     local max_retries=3
     local retry_count=0

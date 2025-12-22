@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 readonly SCRIPT_ARCHITECTURE="modular"
-readonly MANIFEST_URL="https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json"
+readonly MANIFEST_URL="https://raw.githubusercontent.com/nguyentrungempty/panel_n8n/refs/heads/main/manifest.json/manifest.json"
 
 # Đọc version từ manifest.json local (sẽ được set sau khi INSTALL_DIR được định nghĩa)
 SCRIPT_VERSION="3.0"
