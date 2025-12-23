@@ -182,8 +182,15 @@ create_new_instance() {
             echo -e "${RED}❌ Domain không được để trống${NC}"
             continue
         fi
-        if [[ ! "$domain" =~ ^[a-zA-Z0-9][a-zA-Z0-9\.-]*[a-zA-Z0-9]$ ]]; then
-            echo -e "${RED}❌ Định dạng domain không hợp lệ${NC}"
+        # Không cho nhập http / https
+        if [[ "$domain" =~ ^https?:// ]]; then
+            echo -e "${RED}❌ Chỉ nhập domain, không bao gồm http:// hoặc https://${NC}"
+            continue
+        fi
+    
+        # Regex domain hợp lệ
+        if [[ ! "$domain" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$ ]]; then
+            echo -e "${RED}❌ Domain không hợp lệ (vd: example.com, n8n.example.vn)${NC}"
             continue
         fi
         break
