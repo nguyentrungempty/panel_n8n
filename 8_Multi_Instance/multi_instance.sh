@@ -175,6 +175,12 @@ create_new_instance() {
     check_system_resources
     
     # Nhập domain
+    handle_ctrl_c() {
+        echo -e "\n${YELLOW}⛔ Đã hủy tạo instance (Ctrl+C)${NC}"
+        exit 130
+    }
+    
+    trap handle_ctrl_c INT
     local domain=""
     while true; do
         read -p "$(echo -e "${BOLD}${CYAN}🌐 Nhập domain cho instance này: ${NC}")" domain
