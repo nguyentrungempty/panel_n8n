@@ -858,14 +858,18 @@ handle_backup_menu() {
         echo ""
         echo -e "  ${BOLD}${GREEN}TẠO & QUẢN LÝ BACKUP${NC}                ${BOLD}${CYAN}KHÔI PHỤC & XÓA BACKUP${NC}"
         echo ""
-        echo -e "  ${BOLD}${GREEN}1.${NC} ${WHITE}Tạo backup thủ công${NC}                ${BOLD}${CYAN}3.${NC} ${WHITE}Khôi phục từ backup${NC}"
-        echo -e "  ${BOLD}${GREEN}2.${NC} ${WHITE}Liệt kê backup có sẵn${NC}              ${BOLD}${CYAN}4.${NC} ${WHITE}Xóa backup theo số thứ tự${NC}"
+        echo -e "  ${BOLD}${GREEN}1.${NC} ${WHITE}Tạo backup thủ công${NC}                ${BOLD}${CYAN}5.${NC} ${WHITE}Liệt kê backup có sẵn${NC}"
+        echo -e "  ${BOLD}${GREEN}2.${NC} ${WHITE}Bật backup tự động (cron)${NC}          ${BOLD}${CYAN}6.${NC} ${WHITE}Khôi phục từ backup${NC}"
+        echo -e "  ${BOLD}${GREEN}3.${NC} ${WHITE}Tắt backup tự động${NC}                 ${BOLD}${CYAN}7.${NC} ${WHITE}Xóa backup theo số thứ tự${NC}"
         echo ""
-        echo -e "  ${BOLD}${PURPLE}5.${NC} ${WHITE}Kiểm tra tính năng khôi phục${NC}"
+        echo -e "  ${BOLD}${PURPLE}4.${NC} ${WHITE}Trạng thái backup${NC}"
+        echo ""
+        echo ""
+        echo -e "  ${BOLD}${PURPLE}8.${NC} ${WHITE}Kiểm tra tính năng khôi phục${NC}"
         echo ""
         echo -e "  ${BOLD}${RED}0.${NC} ${WHITE}Quay lại menu chính${NC}"
         
-        read -p "$(echo -e "${BOLD}${CYAN}Chọn tùy chọn [0-5]: ${NC}")" backup_choice
+        read -p "$(echo -e "${BOLD}${CYAN}Chọn tùy chọn [0-9]: ${NC}")" backup_choice
         
         case $backup_choice in
             1)
@@ -874,17 +878,32 @@ handle_backup_menu() {
                 ;;
             2)
                 echo -e "\n${BOLD}${CYAN}📋 DANH SÁCH BACKUP...${NC}\n"
-                list_backups
+                bash cron.sh
+                enable
                 ;;
             3)
+                echo -e "\n${BOLD}${CYAN}📋 DANH SÁCH BACKUP...${NC}\n"
+                bash cron.sh
+                disable
+                ;;
+            4)
+                echo -e "\n${BOLD}${CYAN}📋 DANH SÁCH BACKUP...${NC}\n"
+                bash cron.sh
+                status
+                ;;
+            5)
+                echo -e "\n${BOLD}${CYAN}📋 DANH SÁCH BACKUP...${NC}\n"
+                list_backups
+                ;;
+            6)
                 echo -e "\n${BOLD}${CYAN}📥 KHÔI PHỤC BACKUP...${NC}\n"
                 restore_backup
                 ;;
-            4)
+            7)
                 echo -e "\n${BOLD}${RED}🗑️  XÓA BACKUP THEO STT...${NC}\n"
                 delete_backup_by_number
                 ;;
-            5)
+            8)
                 echo -e "\n${BOLD}${CYAN}🔍 KIỂM TRA TÍNH NĂNG...${NC}\n"
                 test_restore_functionality
                 ;;
