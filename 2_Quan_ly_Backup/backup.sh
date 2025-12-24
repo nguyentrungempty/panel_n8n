@@ -858,18 +858,14 @@ handle_backup_menu() {
         echo ""
         echo -e "  ${BOLD}${GREEN}TẠO & QUẢN LÝ BACKUP${NC}                ${BOLD}${CYAN}KHÔI PHỤC & XÓA BACKUP${NC}"
         echo ""
-        echo -e "  ${BOLD}${GREEN}1.${NC} ${WHITE}Tạo backup thủ công${NC}                ${BOLD}${CYAN}5.${NC} ${WHITE}Liệt kê backup có sẵn${NC}"
+        echo -e "  ${BOLD}${GREEN}1.${NC} ${WHITE}Tạo backup thủ công${NC}                ${BOLD}${CYAN}5.${NC} ${WHITE}Liệt kê các bản backup có sẵn${NC}"
         echo -e "  ${BOLD}${GREEN}2.${NC} ${WHITE}Bật backup tự động (cron)${NC}          ${BOLD}${CYAN}6.${NC} ${WHITE}Khôi phục từ backup${NC}"
         echo -e "  ${BOLD}${GREEN}3.${NC} ${WHITE}Tắt backup tự động${NC}                 ${BOLD}${CYAN}7.${NC} ${WHITE}Xóa backup theo số thứ tự${NC}"
-        echo ""
-        echo -e "  ${BOLD}${PURPLE}4.${NC} ${WHITE}Trạng thái backup${NC}"
-        echo ""
-        echo ""
-        echo -e "  ${BOLD}${PURPLE}8.${NC} ${WHITE}Kiểm tra tính năng khôi phục${NC}"
+        echo -e "  ${BOLD}${GREEN}4.${NC} ${WHITE}Trạng thái backup tự động${NC}          ${BOLD}${CYAN}8.${NC} ${WHITE}Kiểm tra tính năng khôi phục${NC}"
         echo ""
         echo -e "  ${BOLD}${RED}0.${NC} ${WHITE}Quay lại menu chính${NC}"
         
-        read -p "$(echo -e "${BOLD}${CYAN}Chọn tùy chọn [0-9]: ${NC}")" backup_choice
+        read -p "$(echo -e "${BOLD}${CYAN}Chọn tùy chọn [0-8]: ${NC}")" backup_choice
         
         case $backup_choice in
             1)
@@ -929,11 +925,13 @@ create_manual_backup_for_instance() {
     local container_name="${SELECTED_CONTAINER:-n8n}"
     local postgres_name="${SELECTED_POSTGRES:-postgres}"
     local instance_id="${SELECTED_INSTANCE:-1}"
+
+    local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
     
-    log_message "INFO" "🚀 Bắt đầu tạo backup cho instance $instance_id ($container_name)..."
+    log_message "INFO" "🚀 Bắt đầu tạo backup cho instance $instance_id ($current_domain)..."
     
     if ! docker ps --format "table {{.Names}}" | grep -q "^${container_name}$"; then
-        log_message "ERROR" "❌ Container $container_name không đang chạy!"
+        log_message "ERROR" "❌ Container $current_domain không đang chạy!"
         return 1
     fi
     
@@ -943,4 +941,59 @@ create_manual_backup_for_instance() {
     
     # Thực hiện backup với container được chọn
     create_manual_backup
+}
+case "$1" in
+  manual_backup)
+    create_manual_backup
+    ;;
+  cleanup)
+    cleanup_backup
+    ;;
+esac
+# Wrapper function để bật backup tự động instance được chọn
+enable_cron() {
+    CRON_TIME="0 2 * * *"
+    local container_name="${SELECTED_CONTAINER:-n8n}"
+    local postgres_name="${SELECTED_POSTGRES:-postgres}"
+    local instance_id="${SELECTED_INSTANCE:-1}"
+
+    local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
+
+    # 🧠 TỰ NHẬN SCRIPT PATH
+    local SCRIPT_PATH
+    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+
+    log_message "INFO" "🚀 Đã bật backup tự động cho instance $instance_id ($current_domain)..."
+    
+    if ! docker ps --format "table {{.Names}}" | grep -q "^${current_domain}$"; then
+        log_message "ERROR" "❌ Container $current_domain không đang chạy!"
+        return 1
+    fi
+    
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+
+    ( crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
+      echo "$CRON_TIME $CRON_CMD >> $BACKUP_DIR 2>&1"
+    ) | crontab -
+
+    echo "✅ Đã bật backup tự động (02:00 mỗi ngày)"
+}
+
+# Wrapper function để backup instance được chọn
+disable_cron() {
+
+    local instance_id="${SELECTED_INSTANCE:-1}"
+    local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
+    
+    log_message "INFO" "🚀 Bắt đầu tắt backup tự động cho instance $instance_id ($current_domain)..."
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+    
+    crontab -l 2>/dev/null | grep -v "$CRON_CMD" | crontab -
+    echo "🛑 Đã tắt backup tự động"
+}
+
+# Wrapper function để backup instance được chọn
+status_cron() {
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+    crontab -l | grep "$CRON_CMD" || echo "⚠️ Backup tự động chưa bật"
 }
