@@ -873,19 +873,16 @@ handle_backup_menu() {
                 create_manual_backup_for_instance
                 ;;
             2)
-                echo -e "\n${BOLD}${CYAN}📋 DANH SÁCH BACKUP...${NC}\n"
-                bash cron.sh
-                enable
+                echo -e "\n${BOLD}${GREEN}📋 ĐANG BẬT BACKUP TỰ ĐỘNG...${NC}\n"
+                enable_cron
                 ;;
             3)
-                echo -e "\n${BOLD}${CYAN}📋 DANH SÁCH BACKUP...${NC}\n"
-                bash cron.sh
-                disable
+                echo -e "\n${BOLD}${GREEN}📋 ĐANG TẮT BACKUP TỰ ĐỘNG...${NC}\n"
+                disable_cron
                 ;;
             4)
-                echo -e "\n${BOLD}${CYAN}📋 DANH SÁCH BACKUP...${NC}\n"
-                bash cron.sh
-                status
+                echo -e "\n${BOLD}${GREEN}📋 ĐANG XEM TRẠNG THÁI BACKUP TỰ ĐỘNG...${NC}\n"
+                status_cron
                 ;;
             5)
                 echo -e "\n${BOLD}${CYAN}📋 DANH SÁCH BACKUP...${NC}\n"
@@ -946,9 +943,6 @@ case "$1" in
   manual_backup)
     create_manual_backup
     ;;
-  cleanup)
-    cleanup_backup
-    ;;
 esac
 # Wrapper function để bật backup tự động instance được chọn
 enable_cron() {
@@ -959,9 +953,6 @@ enable_cron() {
 
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
 
-    # 🧠 TỰ NHẬN SCRIPT PATH
-    local SCRIPT_PATH
-    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
 
     log_message "INFO" "🚀 Đã bật backup tự động cho instance $instance_id ($current_domain)..."
     
@@ -986,7 +977,7 @@ disable_cron() {
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
     
     log_message "INFO" "🚀 Bắt đầu tắt backup tự động cho instance $instance_id ($current_domain)..."
-    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH"
     
     crontab -l 2>/dev/null | grep -v "$CRON_CMD" | crontab -
     echo "🛑 Đã tắt backup tự động"
