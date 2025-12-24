@@ -956,7 +956,7 @@ enable_cron() {
 
     log_message "INFO" "🚀 Đã bật backup tự động cho instance $instance_id ($current_domain)..."
     
-    if ! docker ps --format "table {{.Names}}" | grep -q "^${current_domain}$"; then
+    if ! docker ps --format "table {{.Names}}" | grep -q "^${container_name}$"; then
         log_message "ERROR" "❌ Container $current_domain không đang chạy!"
         return 1
     fi
