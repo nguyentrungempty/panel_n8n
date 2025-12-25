@@ -965,6 +965,9 @@ enable_cron() {
         log_message "ERROR" "❌ Container $current_domain không đang chạy!"
         return 1
     fi
+    # Gọi hàm backup gốc với container name đúng
+    # Tạm thời override biến để dùng đúng container
+    local OLD_CONTAINER="n8n"
     
     CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
 
