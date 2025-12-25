@@ -960,12 +960,7 @@ enable_cron() {
 
     log_message "INFO" "🚀 Đã bật backup tự động cho instance $instance_id ($current_domain)..."
     log_message "INFO" "📄 Script path: $SCRIPT_PATH"
-    
-    if ! docker ps --format "table {{.Names}}" | grep -q "^${container_name}$"; then
-        log_message "ERROR" "❌ Container $current_domain không đang chạy!"
-        return 1
-    fi
-    
+ 
     CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
 
     ( crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
