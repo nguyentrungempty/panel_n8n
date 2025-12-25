@@ -953,8 +953,13 @@ enable_cron() {
 
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
 
+    local SCRIPT_PATH
+    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+
+    local LOG_FILE="/var/log/n8n-backup.log"
 
     log_message "INFO" "🚀 Đã bật backup tự động cho instance $instance_id ($current_domain)..."
+    log_message "INFO" "📄 Script path: $SCRIPT_PATH"
     
     if ! docker ps --format "table {{.Names}}" | grep -q "^${container_name}$"; then
         log_message "ERROR" "❌ Container $current_domain không đang chạy!"
