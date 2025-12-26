@@ -939,37 +939,25 @@ create_manual_backup_for_instance() {
     # Thực hiện backup với container được chọn
     create_manual_backup
 }
-case "$1" in
-  manual_backup)
-    create_manual_backup_for_instance
-    ;;
-esac
+
 # Wrapper function để bật backup tự động instance được chọn
 enable_cron() {
     CRON_TIME="0 2 * * *"
-
     local container_name="${SELECTED_CONTAINER:-n8n}"
     local postgres_name="${SELECTED_POSTGRES:-postgres}"
     local instance_id="${SELECTED_INSTANCE:-1}"
+
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
 
     local SCRIPT_PATH
     SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
 
     local LOG_FILE="/var/log/n8n-backup.log"
+ 
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
 
-    log_message "INFO" "🚀 Đã bật backup tự động cho instance $instance_id ($current_domain)..."
-    log_message "INFO" "📄 Script path: $SCRIPT_PATH"
-
-    CRON_CMD="SELECTED_CONTAINER=$container_name \
-    SELECTED_POSTGRES=$postgres_name \
-    SELECTED_INSTANCE=$instance_id \
-    SELECTED_DOMAIN=$current_domain \
-    bash $SCRIPT_PATH manual_backup"
-
-    (
-      crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
-      echo "$CRON_TIME $CRON_CMD >> $LOG_FILE 2>&1"
+    ( crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
+        echo "$CRON_TIME $CRON_CMD >> $LOG_FILE 2>&1"
     ) | crontab -
 
     echo "✅ Đã bật backup tự động (02:00 mỗi ngày)"
@@ -993,3 +981,9 @@ status_cron() {
     CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
     crontab -l | grep "$CRON_CMD" || echo "⚠️ Backup tự động chưa bật"
 }
+
+case "$1" in
+  manual_backup)
+    create_manual_backup_for_instance
+    ;;
+esac
