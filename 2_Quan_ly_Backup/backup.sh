@@ -945,7 +945,6 @@ enable_cron() {
     
     local CRON_TIME="0 2 * * *"
     local container_name="${SELECTED_CONTAINER:-n8n}"
-    local postgres_name="${SELECTED_POSTGRES:-postgres}"
     local instance_id="${SELECTED_INSTANCE:-1}"
 
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
@@ -958,10 +957,11 @@ enable_cron() {
 
     local LOG_FILE="/var/log/n8n-backup.log"
  
-    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+    CRON_CMD="SELECTED_CONTAINER=$container_name bash $SCRIPT_PATH manual_backup"
 
-    ( crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
-        echo "$CRON_TIME $CRON_CMD >> $LOG_FILE 2>&1"
+    (
+        crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
+        echo "$CRON_TIME SELECTED_CONTAINER=n8n bash $SCRIPT_PATH manual_backup >> $LOG_FILE 2>&1"
     ) | crontab -
 
     echo "✅ Đã bật backup tự động $current_domain (02:00 mỗi ngày)"
