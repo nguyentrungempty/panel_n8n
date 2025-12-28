@@ -942,13 +942,17 @@ create_manual_backup_for_instance() {
 
 # Wrapper function để bật backup tự động instance được chọn
 enable_cron() {
-    CRON_TIME="0 2 * * *"
+    
+    local CRON_TIME="0 2 * * *"
     local container_name="${SELECTED_CONTAINER:-n8n}"
     local postgres_name="${SELECTED_POSTGRES:-postgres}"
     local instance_id="${SELECTED_INSTANCE:-1}"
 
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
 
+    log_message "INFO" "🚀 Bật backup tự động cho instance $instance_id ($container_name)..."
+
+    # Tự nhận đường dẫn script
     local SCRIPT_PATH
     SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
 
@@ -960,7 +964,7 @@ enable_cron() {
         echo "$CRON_TIME $CRON_CMD >> $LOG_FILE 2>&1"
     ) | crontab -
 
-    echo "✅ Đã bật backup tự động (02:00 mỗi ngày)"
+    echo "✅ Đã bật backup tự động $current_domain (02:00 mỗi ngày)"
 }
 
 # Wrapper function để backup instance được chọn
@@ -984,6 +988,6 @@ status_cron() {
 
 case "$1" in
   manual_backup)
-    create_manual_backup_for_instance
+    create_manual_backup
     ;;
 esac
