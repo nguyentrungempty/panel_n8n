@@ -833,6 +833,65 @@ delete_backup_by_number() {
     esac
 }
 
+# Wrapper function để bật backup tự động instance được chọn
+enable_cron() {
+    
+    local CRON_TIME="0 2 * * *"
+    local container_name="${SELECTED_CONTAINER:-n8n}"
+    local instance_id="${SELECTED_INSTANCE:-1}"
+
+    local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
+
+    log_message "INFO" "🚀 Bật backup tự động cho instance $instance_id ($current_domain)..."
+
+    # Tự nhận đường dẫn script
+    local SCRIPT_PATH
+    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+
+    local LOG_FILE="/var/log/n8n-backup.log"
+ 
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+
+    (
+        crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
+        echo "$CRON_TIME SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+    ) | crontab -
+
+    echo "✅ Đã bật backup tự động $current_domain (02:00 mỗi ngày)"
+    # Gọi hàm backup gốc với container name đúng
+    # Tạm thời override biến để dùng đúng container
+    local OLD_CONTAINER="n8n"
+}
+
+# Wrapper function để backup instance được chọn
+disable_cron() {
+
+    local instance_id="${SELECTED_INSTANCE:-1}"
+    local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
+    
+    log_message "INFO" "🚀 Bắt đầu tắt backup tự động cho instance $instance_id ($current_domain)..."
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+    
+    crontab -l 2>/dev/null | grep -v "$CRON_CMD" | crontab -
+    echo "🛑 Đã tắt backup tự động"
+}
+
+# Wrapper function để backup instance được chọn
+status_cron() {
+    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+    CRON_CMD="SELECTED_CONTAINER=$container_name bash $SCRIPT_PATH manual_backup"
+    crontab -l | grep "$CRON_CMD" || echo "⚠️ Backup tự động chưa bật"
+}
+
+case "$1" in
+  manual_backup)
+    create_manual_backup
+    ;;
+  enable_cron)
+    enable_cron
+    ;;
+esac
+
 handle_backup_menu() {
     # Chọn instance nếu có nhiều instance
     if type select_instance_for_operation &>/dev/null; then
@@ -939,63 +998,3 @@ create_manual_backup_for_instance() {
     # Thực hiện backup với container được chọn
     create_manual_backup
 }
-
-# Wrapper function để bật backup tự động instance được chọn
-enable_cron() {
-    
-    local CRON_TIME="0 2 * * *"
-    local container_name="${SELECTED_CONTAINER:-n8n}"
-    local instance_id="${SELECTED_INSTANCE:-1}"
-
-    local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
-
-    log_message "INFO" "🚀 Bật backup tự động cho instance $instance_id ($current_domain)..."
-
-    # Tự nhận đường dẫn script
-    local SCRIPT_PATH
-    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-
-    local LOG_FILE="/var/log/n8n-backup.log"
- 
-    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
-
-    (
-        crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
-        echo "$CRON_TIME SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
-    ) | crontab -
-
-    echo "✅ Đã bật backup tự động $current_domain (02:00 mỗi ngày)"
-}
-
-# Wrapper function để backup instance được chọn
-disable_cron() {
-
-    local instance_id="${SELECTED_INSTANCE:-1}"
-    local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
-    
-    log_message "INFO" "🚀 Bắt đầu tắt backup tự động cho instance $instance_id ($current_domain)..."
-    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
-    
-    crontab -l 2>/dev/null | grep -v "$CRON_CMD" | crontab -
-    echo "🛑 Đã tắt backup tự động"
-}
-
-# Wrapper function để backup instance được chọn
-status_cron() {
-    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-    CRON_CMD="SELECTED_CONTAINER=$container_name bash $SCRIPT_PATH manual_backup"
-    crontab -l | grep "$CRON_CMD" || echo "⚠️ Backup tự động chưa bật"
-}
-
-case "$1" in
-  manual_backup)
-    create_manual_backup
-    ;;
-  enable_cron)
-    enable_cron
-    ;;
-  *)
-    echo "Usage: $0 {manual_backup|enable_cron}"
-    exit 1
-    ;;
-esac
