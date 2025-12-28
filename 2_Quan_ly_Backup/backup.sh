@@ -949,7 +949,7 @@ enable_cron() {
 
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
 
-    log_message "INFO" "🚀 Bật backup tự động cho instance $instance_id ($container_name)..."
+    log_message "INFO" "🚀 Bật backup tự động cho instance $instance_id ($current_domain)..."
 
     # Tự nhận đường dẫn script
     local SCRIPT_PATH
@@ -957,11 +957,11 @@ enable_cron() {
 
     local LOG_FILE="/var/log/n8n-backup.log"
  
-    CRON_CMD="SELECTED_CONTAINER=$container_name bash $SCRIPT_PATH manual_backup"
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
 
     (
         crontab -l 2>/dev/null | grep -v "$SCRIPT_PATH manual_backup"
-        echo "$CRON_TIME SELECTED_CONTAINER=n8n bash $SCRIPT_PATH manual_backup >> $LOG_FILE 2>&1"
+        echo "$CRON_TIME SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
     ) | crontab -
 
     echo "✅ Đã bật backup tự động $current_domain (02:00 mỗi ngày)"
@@ -974,7 +974,7 @@ disable_cron() {
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
     
     log_message "INFO" "🚀 Bắt đầu tắt backup tự động cho instance $instance_id ($current_domain)..."
-    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH"
+    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
     
     crontab -l 2>/dev/null | grep -v "$CRON_CMD" | crontab -
     echo "🛑 Đã tắt backup tự động"
@@ -982,12 +982,20 @@ disable_cron() {
 
 # Wrapper function để backup instance được chọn
 status_cron() {
-    CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
+    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+    CRON_CMD="SELECTED_CONTAINER=$container_name bash $SCRIPT_PATH manual_backup"
     crontab -l | grep "$CRON_CMD" || echo "⚠️ Backup tự động chưa bật"
 }
 
 case "$1" in
   manual_backup)
     create_manual_backup
+    ;;
+  enable_cron)
+    enable_cron
+    ;;
+  *)
+    echo "Usage: $0 {manual_backup|enable_cron}"
+    exit 1
     ;;
 esac
