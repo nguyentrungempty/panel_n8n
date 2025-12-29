@@ -2,7 +2,9 @@
 
 # Module Quản lý Backup
 # Chứa các hàm liên quan đến backup và restore N8N
-
+source "/opt/n8npanel/v3/common/utils.sh"
+N8N_DATA_DIR="/root/n8n_data"
+BACKUP_DIR="$N8N_DATA_DIR/backups"
 setup_backup_structure() {
     log_message "INFO" "Thiết lập cấu trúc thư mục backup..."
     
@@ -943,7 +945,7 @@ create_manual_backup_for_instance() {
 # Wrapper function để bật backup tự động instance được chọn
 enable_cron() {
     
-    local CRON_TIME="2 * * * *"
+    local CRON_TIME="*/2 * * * *"
     local container_name="${SELECTED_CONTAINER:-n8n}"
     local postgres_name="${SELECTED_POSTGRES:-postgres}"
     local instance_id="${SELECTED_INSTANCE:-1}"
@@ -956,7 +958,7 @@ enable_cron() {
     local SCRIPT_PATH
     SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
 
-    local LOG_FILE="/var/log/n8n-backup.log"
+    local LOG_FILE="/var/log/n8n-backup-$(date +%Y%m%d_%H%M%S).log"
  
     CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
 
