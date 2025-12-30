@@ -64,7 +64,7 @@ create_manual_backup() {
         log_message "INFO" "ℹ️ Không tìm thấy PostgreSQL container, sẽ kiểm tra SQLite"
     fi
     
-    local temp_dir="/tmp/n8n_backup_${SELECTED_INSTANCE}_$(date +%Y%m%d_%H%M%S)"
+    local temp_dir="/tmp/$DOMAIN_CONTAINER/n8n_backup_${SELECTED_INSTANCE}_$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$temp_dir"
     
     local max_retries=5
@@ -89,7 +89,7 @@ create_manual_backup() {
     local workflow_exported=false
     local workflow_count=0
     
-    docker exec $N8N_CONTAINER mkdir -p /tmp/backup_workflows 2>/dev/null
+    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows/"$DOMAIN_CONTAINER" 2>/dev/null
     
     if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output=/tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":"$temp_dir/workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
@@ -116,7 +116,7 @@ create_manual_backup() {
     local credentials_exported=false
     local credentials_count=0
     
-    docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_credentials" 2>/dev/null
+    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_credentials/"$DOMAIN_CONTAINER" 2>/dev/null
     
     if timeout 60 docker exec "$N8N_CONTAINER" n8n export:credentials --backup --output=/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":"$temp_dir/backup_credentials"/ "$temp_dir/credentials" >/dev/null 2>&1; then
@@ -126,18 +126,18 @@ create_manual_backup() {
                 log_message "INFO" "✅ Đã export $credentials_count credentials thành công"
             else
                 log_message "WARN" "⚠️ Không có credentials nào để export"
-                echo "Không có credentials nào trong $DOMAIN_CONTAINER" > "$temp_dir/$DOMAIN_CONTAINER/no_credentials.txt"
+                echo "Không có credentials nào trong $DOMAIN_CONTAINER" > "$temp_dir/no_credentials.txt"
             fi
         else
             log_message "ERROR" "❌ Không thể copy credentials từ container"
-            echo "Lỗi copy credentials từ container" > "$temp_dir/$DOMAIN_CONTAINER/credentials_export_error.txt"
+            echo "Lỗi copy credentials từ container" > "$temp_dir/credentials_export_error.txt"
         fi
     else
         log_message "ERROR" "❌ Lỗi khi export credentials"
-        echo "Lỗi export credentials" > "$temp_dir/$DOMAIN_CONTAINER/credentials_export_error.txt"
+        echo "Lỗi export credentials" > "$temp_dir/credentials_export_error.txt"
     fi
     
-    docker exec "$N8N_CONTAINER" rm -rf "$temp_dir/$DOMAIN_CONTAINER/backup_credentials"/ >/dev/null 2>&1
+    docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_credentials/"$DOMAIN_CONTAINER" >/dev/null 2>&1
     
     log_message "INFO" "🗄️ Backup database..."
     local database_included=false
