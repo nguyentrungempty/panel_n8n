@@ -9,6 +9,7 @@ BACKUP_DIR="$N8N_DATA_DIR/backups"
 
 N8N_CONTAINER="${SELECTED_CONTAINER:-n8n}"
 POSTGRES_CONTAINER="${SELECTED_POSTGRES:-postgres}"
+DOMAIN_CONTAINER="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
 instance_id="${SELECTED_INSTANCE:-1}"
 setup_backup_structure() {
     log_message "INFO" "Thiết lập cấu trúc thư mục backup..."
@@ -47,10 +48,10 @@ backup_log() {
 }
 
 create_manual_backup() {
-    log_message "INFO" "🚀 Bắt đầu tạo backup thủ công $N8N_CONTAINER..."
+    log_message "INFO" "🚀 Bắt đầu tạo backup thủ công $DOMAIN_CONTAINER..."
     
     if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
-        log_message "ERROR" "❌ Container $N8N_CONTAINER không đang chạy!"
+        log_message "ERROR" "❌ Container $DOMAIN_CONTAINER không đang chạy!"
         return 1
     fi
     
@@ -69,27 +70,27 @@ create_manual_backup() {
     local retry_count=0
     while [ $retry_count -lt $max_retries ]; do
         if timeout 10 docker exec "$N8N_CONTAINER" n8n --version >/dev/null 2>&1; then
-            log_message "INFO" "✅ Container $N8N_CONTAINER đã sẵn sàng"
+            log_message "INFO" "✅ Container $DOMAIN_CONTAINER đã sẵn sàng"
             break
         fi
         retry_count=$((retry_count + 1))
-        log_message "WARN" "⏳ Chờ container $N8N_CONTAINER sẵn sàng (lần thử $retry_count/$max_retries)..."
+        log_message "WARN" "⏳ Chờ container $DOMAIN_CONTAINER sẵn sàng (lần thử $retry_count/$max_retries)..."
         sleep 2
     done
     
     if [ $retry_count -eq $max_retries ]; then
-        log_message "ERROR" "❌ Container $N8N_CONTAINER không phản hồi sau $max_retries lần thử"
+        log_message "ERROR" "❌ Container $DOMAIN_CONTAINER không phản hồi sau $max_retries lần thử"
         rm -rf "$temp_dir"
         return 1
     fi
     
-    log_message "INFO" "📋 Exporting workflows using official n8n CLI..."
+    log_message "INFO" "📋 Exporting workflows using official $DOMAIN_CONTAINER CLI..."
     local workflow_exported=false
     local workflow_count=0
     
     docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_workflows" 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output="$temp_dir/backup_workflows"/ >/dev/null 2>&1; then
+    if timeout 60 docker exec n8n "$N8N_CONTAINER" export:workflow --backup --output="$temp_dir/backup_workflows"/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":"$temp_dir/workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
@@ -97,7 +98,7 @@ create_manual_backup() {
                 log_message "INFO" "✅ Đã export $workflow_count workflows thành công"
             else
                 log_message "WARN" "⚠️ Không có workflows nào để export"
-                echo "Không có workflows nào trong n8n" > "$temp_dir/no_workflows.txt"
+                echo "Không có workflows nào trong $DOMAIN_CONTAINER" > "$temp_dir/no_workflows.txt"
             fi
         else
             log_message "ERROR" "❌ Không thể copy workflows từ container"
@@ -110,7 +111,7 @@ create_manual_backup() {
     
     docker exec "$N8N_CONTAINER" rm -rf "$temp_dir/backup_workflows"/ >/dev/null 2>&1
     
-    log_message "INFO" "🔐 Exporting credentials using official n8n CLI..."
+    log_message "INFO" "🔐 Exporting credentials using official $DOMAIN_CONTAINER CLI..."
     local credentials_exported=false
     local credentials_count=0
     
@@ -124,7 +125,7 @@ create_manual_backup() {
                 log_message "INFO" "✅ Đã export $credentials_count credentials thành công"
             else
                 log_message "WARN" "⚠️ Không có credentials nào để export"
-                echo "Không có credentials nào trong n8n" > "$temp_dir/no_credentials.txt"
+                echo "Không có credentials nào trong $DOMAIN_CONTAINER" > "$temp_dir/no_credentials.txt"
             fi
         else
             log_message "ERROR" "❌ Không thể copy credentials từ container"
@@ -929,6 +930,7 @@ create_manual_backup_for_instance() {
 
     export N8N_CONTAINER="${SELECTED_CONTAINER:-n8n}"
     export POSTGRES_CONTAINER="${SELECTED_POSTGRES:-postgres}"
+    export DOMAIN_CONTAINER="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
 
     local container_name="${SELECTED_CONTAINER:-n8n}"
     local postgres_name="${SELECTED_POSTGRES:-postgres}"
