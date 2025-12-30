@@ -47,10 +47,10 @@ backup_log() {
 }
 
 create_manual_backup() {
-    log_message "INFO" "🚀 Bắt đầu tạo backup thủ công..."
+    log_message "INFO" "🚀 Bắt đầu tạo backup thủ công $N8N_CONTAINER..."
     
     if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
-        log_message "ERROR" "❌ Container n8n không đang chạy!"
+        log_message "ERROR" "❌ Container $N8N_CONTAINER không đang chạy!"
         return 1
     fi
     
@@ -69,16 +69,16 @@ create_manual_backup() {
     local retry_count=0
     while [ $retry_count -lt $max_retries ]; do
         if timeout 10 docker exec "$N8N_CONTAINER" n8n --version >/dev/null 2>&1; then
-            log_message "INFO" "✅ Container n8n đã sẵn sàng"
+            log_message "INFO" "✅ Container $N8N_CONTAINER đã sẵn sàng"
             break
         fi
         retry_count=$((retry_count + 1))
-        log_message "WARN" "⏳ Chờ container n8n sẵn sàng (lần thử $retry_count/$max_retries)..."
+        log_message "WARN" "⏳ Chờ container $N8N_CONTAINER sẵn sàng (lần thử $retry_count/$max_retries)..."
         sleep 2
     done
     
     if [ $retry_count -eq $max_retries ]; then
-        log_message "ERROR" "❌ Container n8n không phản hồi sau $max_retries lần thử"
+        log_message "ERROR" "❌ Container $N8N_CONTAINER không phản hồi sau $max_retries lần thử"
         rm -rf "$temp_dir"
         return 1
     fi
@@ -89,7 +89,7 @@ create_manual_backup() {
     
     docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_workflows" 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" export:workflow --backup --output="$temp_dir/backup_workflows"/ >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output="$temp_dir/backup_workflows"/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":"$temp_dir/workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
@@ -116,7 +116,7 @@ create_manual_backup() {
     
     docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_credentials" 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" export:credentials --backup --output="$temp_dir/backup_credentials"/ >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:credentials --backup --output="$temp_dir/backup_credentials"/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":"$temp_dir/backup_credentials"/ "$temp_dir/credentials" >/dev/null 2>&1; then
             credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
             if [ $credentials_count -gt 0 ]; then
@@ -927,7 +927,7 @@ handle_backup_menu() {
 # Wrapper function để backup instance được chọn
 create_manual_backup_for_instance() {
 
-    export "$N8N_CONTAINER"="${SELECTED_CONTAINER:-n8n}"
+    export N8N_CONTAINER="${SELECTED_CONTAINER:-n8n}"
     export POSTGRES_CONTAINER="${SELECTED_POSTGRES:-postgres}"
 
     local container_name="${SELECTED_CONTAINER:-n8n}"
