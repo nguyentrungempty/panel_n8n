@@ -3,8 +3,12 @@
 # Module Quản lý Backup
 # Chứa các hàm liên quan đến backup và restore N8N
 source "/opt/n8npanel/v3/common/utils.sh"
+source "/opt/n8npanel/v3/common/instance_seletor.sh"
 N8N_DATA_DIR="/root/n8n_data"
 BACKUP_DIR="$N8N_DATA_DIR/backups"
+
+N8N_CONTAINER="${N8N_CONTAINER:-n8n}"
+POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-postgres}"
 setup_backup_structure() {
     log_message "INFO" "Thiết lập cấu trúc thư mục backup..."
     
@@ -63,7 +67,7 @@ create_manual_backup() {
     local max_retries=5
     local retry_count=0
     while [ $retry_count -lt $max_retries ]; do
-        if timeout 10 docker exec n8n n8n --version >/dev/null 2>&1; then
+        if timeout 10 docker exec "$N8N_CONTAINER" n8n --version >/dev/null 2>&1; then
             log_message "INFO" "✅ Container n8n đã sẵn sàng"
             break
         fi
@@ -82,10 +86,10 @@ create_manual_backup() {
     local workflow_exported=false
     local workflow_count=0
     
-    docker exec n8n mkdir -p /tmp/backup_workflows 2>/dev/null
+    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows 2>/dev/null
     
-    if timeout 60 docker exec n8n n8n export:workflow --backup --output=/tmp/backup_workflows/ >/dev/null 2>&1; then
-        if docker cp n8n:/tmp/backup_workflows/ "$temp_dir/workflows" >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output=/tmp/backup_workflows/ >/dev/null 2>&1; then
+        if docker cp "$N8N_CONTAINER":/tmp/backup_workflows/ "$temp_dir/workflows" >/dev/null 2>&1; then
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
                 workflow_exported=true
@@ -103,16 +107,16 @@ create_manual_backup() {
         echo "Lỗi export workflows" > "$temp_dir/workflow_export_error.txt"
     fi
     
-    docker exec n8n rm -rf /tmp/backup_workflows/ >/dev/null 2>&1
+    docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_workflows/ >/dev/null 2>&1
     
     log_message "INFO" "🔐 Exporting credentials using official n8n CLI..."
     local credentials_exported=false
     local credentials_count=0
     
-    docker exec n8n mkdir -p /tmp/backup_credentials 2>/dev/null
+    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_credentials 2>/dev/null
     
-    if timeout 60 docker exec n8n n8n export:credentials --backup --output=/tmp/backup_credentials/ >/dev/null 2>&1; then
-        if docker cp n8n:/tmp/backup_credentials/ "$temp_dir/credentials" >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:credentials --backup --output=/tmp/backup_credentials/ >/dev/null 2>&1; then
+        if docker cp "$N8N_CONTAINER":/tmp/backup_credentials/ "$temp_dir/credentials" >/dev/null 2>&1; then
             credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
             if [ $credentials_count -gt 0 ]; then
                 credentials_exported=true
@@ -130,7 +134,7 @@ create_manual_backup() {
         echo "Lỗi export credentials" > "$temp_dir/credentials_export_error.txt"
     fi
     
-    docker exec n8n rm -rf /tmp/backup_credentials/ >/dev/null 2>&1
+    docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_credentials/ >/dev/null 2>&1
     
     log_message "INFO" "🗄️ Backup database..."
     local database_included=false
@@ -155,15 +159,15 @@ create_manual_backup() {
         database_type="SQLite"
         log_message "INFO" "📊 Backup SQLite database..."
         
-        if docker exec n8n test -f /home/node/.n8n/database.sqlite 2>/dev/null; then
-            if docker cp n8n:/home/node/.n8n/database.sqlite "$temp_dir/database.sqlite" 2>/dev/null; then
+        if docker exec "$N8N_CONTAINER" test -f /home/node/.n8n/database.sqlite 2>/dev/null; then
+            if docker cp "$N8N_CONTAINER":/home/node/.n8n/database.sqlite "$temp_dir/database.sqlite" 2>/dev/null; then
                 database_included=true
                 log_message "SUCCESS" "✅ SQLite database backup thành công"
             else
                 log_message "WARN" "⚠️ Không thể copy SQLite database"
             fi
-        elif docker exec n8n test -f /data/database.sqlite 2>/dev/null; then
-            if docker cp n8n:/data/database.sqlite "$temp_dir/database.sqlite" 2>/dev/null; then
+        elif docker exec "$N8N_CONTAINER" test -f /data/database.sqlite 2>/dev/null; then
+            if docker cp "$N8N_CONTAINER":/data/database.sqlite "$temp_dir/database.sqlite" 2>/dev/null; then
                 database_included=true
                 log_message "SUCCESS" "✅ SQLite database backup thành công"
             else
@@ -185,7 +189,7 @@ create_manual_backup() {
     )
     
     for location in "${key_locations[@]}"; do
-        if docker exec n8n test -f "$location" 2>/dev/null; then
+        if docker exec "$N8N_CONTAINER" test -f "$location" 2>/dev/null; then
             if docker cp "n8n:$location" "$temp_dir/encryptionKey" 2>/dev/null; then
                 encryption_key_included=true
                 log_message "SUCCESS" "✅ Đã backup encryption key từ: $location"
@@ -200,17 +204,17 @@ create_manual_backup() {
     fi
     
     log_message "INFO" "📁 Backup config files và custom nodes..."
-    docker cp n8n:/home/node/.n8n/config "$temp_dir/config" 2>/dev/null || \
-    docker cp n8n:/data/config "$temp_dir/config" 2>/dev/null || \
+    docker cp "$N8N_CONTAINER":/home/node/.n8n/config "$temp_dir/config" 2>/dev/null || \
+    docker cp "$N8N_CONTAINER":/data/config "$temp_dir/config" 2>/dev/null || \
     echo "No config directory found" > "$temp_dir/no_config.txt"
     
-    docker cp n8n:/home/node/.n8n/custom "$temp_dir/custom" 2>/dev/null || \
-    docker cp n8n:/data/custom "$temp_dir/custom" 2>/dev/null || \
+    docker cp "$N8N_CONTAINER":/home/node/.n8n/custom "$temp_dir/custom" 2>/dev/null || \
+    docker cp "$N8N_CONTAINER":/data/custom "$temp_dir/custom" 2>/dev/null || \
     echo "No custom nodes found" > "$temp_dir/no_custom_nodes.txt"
     
     log_message "INFO" "📝 Tạo metadata backup..."
     local backup_timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local n8n_version=$(docker exec n8n n8n --version 2>/dev/null | grep -o 'n8n@[0-9.]*' || echo "unknown")
+    local n8n_version=$(docker exec "$N8N_CONTAINER" n8n --version 2>/dev/null | grep -o 'n8n@[0-9.]*' || echo "unknown")
     local server_ip=$(curl -s ifconfig.me 2>/dev/null || echo "unknown")
     
     cat > "$temp_dir/backup_info.json" <<EOF
@@ -958,7 +962,7 @@ enable_cron() {
     local SCRIPT_PATH
     SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
 
-    local LOG_FILE="/var/log/n8n-backup-$(date +%Y%m%d_%H%M%S).log"
+    local LOG_FILE="/var/log/n8n_backup_$(date +%Y%m%d_%H%M%S).log"
  
     CRON_CMD="SELECTED_CONTAINER=$current_domain bash $SCRIPT_PATH manual_backup"
 
@@ -989,7 +993,10 @@ status_cron() {
 }
 
 case "$1" in
-  manual_backup)
-    create_manual_backup_for_instance
+    manual_backup)
+        create_manual_backup_for_instance
+    ;;
+    enable_cron)
+        enable_cron
     ;;
 esac
