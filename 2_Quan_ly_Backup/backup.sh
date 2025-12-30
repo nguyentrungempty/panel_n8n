@@ -90,7 +90,7 @@ create_manual_backup() {
     docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_workflows" 2>/dev/null
     
     if timeout 60 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" export:workflow --backup --output="$temp_dir/backup_workflows"/ >/dev/null 2>&1; then
-        if docker cp "$N8N_CONTAINER":"$temp_dir/backup_workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
+        if docker cp "$N8N_CONTAINER":"$temp_dir/workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
                 workflow_exported=true
@@ -114,10 +114,10 @@ create_manual_backup() {
     local credentials_exported=false
     local credentials_count=0
     
-    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_credentials 2>/dev/null
+    docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_credentials" 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" export:credentials --backup --output=/tmp/backup_credentials/ >/dev/null 2>&1; then
-        if docker cp "$N8N_CONTAINER":/tmp/backup_credentials/ "$temp_dir/credentials" >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" export:credentials --backup --output="$temp_dir/backup_credentials"/ >/dev/null 2>&1; then
+        if docker cp "$N8N_CONTAINER":"$temp_dir/backup_credentials"/ "$temp_dir/credentials" >/dev/null 2>&1; then
             credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
             if [ $credentials_count -gt 0 ]; then
                 credentials_exported=true
@@ -135,7 +135,7 @@ create_manual_backup() {
         echo "Lỗi export credentials" > "$temp_dir/credentials_export_error.txt"
     fi
     
-    docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_credentials/ >/dev/null 2>&1
+    docker exec "$N8N_CONTAINER" rm -rf "$temp_dir/backup_credentials"/ >/dev/null 2>&1
     
     log_message "INFO" "🗄️ Backup database..."
     local database_included=false
