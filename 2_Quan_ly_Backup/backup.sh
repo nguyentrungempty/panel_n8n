@@ -70,7 +70,7 @@ create_manual_backup() {
     local max_retries=5
     local retry_count=0
     while [ $retry_count -lt $max_retries ]; do
-        if timeout 10 docker exec $N8N_CONTAINER $N8N_CONTAINER --version >/dev/null 2>&1; then
+        if timeout 10 docker exec $N8N_CONTAINER n8n --version >/dev/null 2>&1; then
             log_message "INFO" "✅ Container $DOMAIN_CONTAINER đã sẵn sàng"
             break
         fi
@@ -89,10 +89,10 @@ create_manual_backup() {
     local workflow_exported=false
     local workflow_count=0
     
-    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows 2>/dev/null
+    docker exec $N8N_CONTAINER mkdir -p /tmp/backup_workflows 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" $N8N_CONTAINER export:workflow --backup --output=/tmp/backup_workflows/ >/dev/null 2>&1; then
-        if docker cp "$N8N_CONTAINER":"$temp_dir/workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
+    if timeout 60 docker exec $N8N_CONTAINER n8n export:workflow --backup --output=/tmp/backup_workflows/ >/dev/null 2>&1; then
+        if docker cp $N8N_CONTAINER:"$temp_dir/workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
                 workflow_exported=true
@@ -110,16 +110,16 @@ create_manual_backup() {
         echo "Lỗi export workflows" > "$temp_dir/workflow_export_error.txt"
     fi
     
-    docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_workflows/ >/dev/null 2>&1
+    docker exec $N8N_CONTAINER rm -rf /tmp/backup_workflows/ >/dev/null 2>&1
     
     log_message "INFO" "🔐 Exporting credentials using official $DOMAIN_CONTAINER CLI..."
     local credentials_exported=false
     local credentials_count=0
     
-    docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_credentials" 2>/dev/null
+    docker exec $N8N_CONTAINER mkdir -p "$temp_dir/backup_credentials" 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" $N8N_CONTAINER export:credentials --backup --output="$temp_dir/backup_credentials"/ >/dev/null 2>&1; then
-        if docker cp "$N8N_CONTAINER":"$temp_dir/backup_credentials"/ "$temp_dir/credentials" >/dev/null 2>&1; then
+    if timeout 60 docker exec $N8N_CONTAINER n8n export:credentials --backup --output="$temp_dir/backup_credentials"/ >/dev/null 2>&1; then
+        if docker cp $N8N_CONTAINER:"$temp_dir/backup_credentials"/ "$temp_dir/credentials" >/dev/null 2>&1; then
             credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
             if [ $credentials_count -gt 0 ]; then
                 credentials_exported=true
@@ -137,7 +137,7 @@ create_manual_backup() {
         echo "Lỗi export credentials" > "$temp_dir/credentials_export_error.txt"
     fi
     
-    docker exec "$N8N_CONTAINER" rm -rf "$temp_dir/backup_credentials"/ >/dev/null 2>&1
+    docker exec $N8N_CONTAINER rm -rf "$temp_dir/backup_credentials"/ >/dev/null 2>&1
     
     log_message "INFO" "🗄️ Backup database..."
     local database_included=false
@@ -147,9 +147,9 @@ create_manual_backup() {
         database_type="PostgreSQL"
         log_message "INFO" "📊 Backup PostgreSQL database..."
         
-        local db_host=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_HOST 2>/dev/null || echo "postgres")
-        local db_name=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_DATABASE 2>/dev/null || echo "n8n")
-        local db_user=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_USER 2>/dev/null || echo "n8n")
+        local db_host=$(docker exec $N8N_CONTAINER printenv DB_POSTGRESDB_HOST 2>/dev/null || echo "postgres")
+        local db_name=$(docker exec $N8N_CONTAINER printenv DB_POSTGRESDB_DATABASE 2>/dev/null || echo "n8n")
+        local db_user=$(docker exec $N8N_CONTAINER printenv DB_POSTGRESDB_USER 2>/dev/null || echo "n8n")
         
         if docker exec POSTGRES_CONTAINER pg_dump -h localhost -U "$db_user" -d "$db_name" > "$temp_dir/database.sql" 2>/dev/null; then
             database_included=true
@@ -162,15 +162,15 @@ create_manual_backup() {
         database_type="SQLite"
         log_message "INFO" "📊 Backup SQLite database..."
         
-        if docker exec "$N8N_CONTAINER" test -f /home/node/.n8n/database.sqlite 2>/dev/null; then
-            if docker cp "$N8N_CONTAINER":/home/node/.n8n/database.sqlite "$temp_dir/database.sqlite" 2>/dev/null; then
+        if docker exec $N8N_CONTAINER test -f /home/node/.n8n/database.sqlite 2>/dev/null; then
+            if docker cp $N8N_CONTAINER:/home/node/.n8n/database.sqlite "$temp_dir/database.sqlite" 2>/dev/null; then
                 database_included=true
                 log_message "SUCCESS" "✅ SQLite database backup thành công"
             else
                 log_message "WARN" "⚠️ Không thể copy SQLite database"
             fi
-        elif docker exec "$N8N_CONTAINER" test -f /data/database.sqlite 2>/dev/null; then
-            if docker cp "$N8N_CONTAINER":/data/database.sqlite "$temp_dir/database.sqlite" 2>/dev/null; then
+        elif docker exec $N8N_CONTAINER test -f /data/database.sqlite 2>/dev/null; then
+            if docker cp $N8N_CONTAINER:/data/database.sqlite "$temp_dir/database.sqlite" 2>/dev/null; then
                 database_included=true
                 log_message "SUCCESS" "✅ SQLite database backup thành công"
             else
