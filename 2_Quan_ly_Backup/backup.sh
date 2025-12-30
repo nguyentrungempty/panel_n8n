@@ -48,6 +48,7 @@ backup_log() {
 }
 
 create_manual_backup() {
+    CONTAINER_TMP_DIR="/tmp/n8n_backup_workflows"
     log_message "INFO" "🚀 Bắt đầu tạo backup thủ công $DOMAIN_CONTAINER..."
     
     if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
@@ -69,7 +70,7 @@ create_manual_backup() {
     local max_retries=5
     local retry_count=0
     while [ $retry_count -lt $max_retries ]; do
-        if timeout 10 docker exec "$N8N_CONTAINER" n8n --version >/dev/null 2>&1; then
+        if timeout 10 docker exec $N8N_CONTAINER $N8N_CONTAINER --version >/dev/null 2>&1; then
             log_message "INFO" "✅ Container $DOMAIN_CONTAINER đã sẵn sàng"
             break
         fi
@@ -88,9 +89,9 @@ create_manual_backup() {
     local workflow_exported=false
     local workflow_count=0
     
-    docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_workflows" 2>/dev/null
+    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows 2>/dev/null
     
-    if timeout 60 docker exec n8n "$N8N_CONTAINER" export:workflow --backup --output="$temp_dir/backup_workflows"/ >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" $N8N_CONTAINER export:workflow --backup --output=/tmp/backup_workflows/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":"$temp_dir/workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
@@ -109,7 +110,7 @@ create_manual_backup() {
         echo "Lỗi export workflows" > "$temp_dir/workflow_export_error.txt"
     fi
     
-    docker exec "$N8N_CONTAINER" rm -rf "$temp_dir/backup_workflows"/ >/dev/null 2>&1
+    docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_workflows/ >/dev/null 2>&1
     
     log_message "INFO" "🔐 Exporting credentials using official $DOMAIN_CONTAINER CLI..."
     local credentials_exported=false
@@ -117,7 +118,7 @@ create_manual_backup() {
     
     docker exec "$N8N_CONTAINER" mkdir -p "$temp_dir/backup_credentials" 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:credentials --backup --output="$temp_dir/backup_credentials"/ >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" $N8N_CONTAINER export:credentials --backup --output="$temp_dir/backup_credentials"/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":"$temp_dir/backup_credentials"/ "$temp_dir/credentials" >/dev/null 2>&1; then
             credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
             if [ $credentials_count -gt 0 ]; then
