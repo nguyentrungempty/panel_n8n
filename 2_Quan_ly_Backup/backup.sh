@@ -48,7 +48,7 @@ backup_log() {
 }
 
 create_manual_backup() {
-
+    setup_backup_structure
     log_message "INFO" "🚀 Bắt đầu tạo backup thủ công $DOMAIN_CONTAINER..."
     
     if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
@@ -64,7 +64,7 @@ create_manual_backup() {
         log_message "INFO" "ℹ️ Không tìm thấy PostgreSQL container, sẽ kiểm tra SQLite"
     fi
     
-    local temp_dir="/tmp/$DOMAIN_CONTAINER/n8n_backup_${SELECTED_INSTANCE}_$(date +%Y%m%d_%H%M%S)"
+    local temp_dir="/tmp/n8n_backup_${DOMAIN_CONTAINER}_$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$temp_dir"
     
     local max_retries=5
@@ -92,7 +92,7 @@ create_manual_backup() {
     docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows/"$DOMAIN_CONTAINER" 2>/dev/null
     
     if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output=/tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
-        if docker cp "$N8N_CONTAINER":"$temp_dir/workflows"/ "$temp_dir/workflows" >/dev/null 2>&1; then
+        if docker cp "$N8N_CONTAINER":/tmp/backup_workflows/"$DOMAIN_CONTAINER" "$temp_dir/workflows" >/dev/null 2>&1; then
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
                 workflow_exported=true
@@ -119,7 +119,7 @@ create_manual_backup() {
     docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_credentials/"$DOMAIN_CONTAINER" 2>/dev/null
     
     if timeout 60 docker exec "$N8N_CONTAINER" n8n export:credentials --backup --output=/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
-        if docker cp "$N8N_CONTAINER":"$temp_dir/backup_credentials"/ "$temp_dir/credentials" >/dev/null 2>&1; then
+        if docker cp "$N8N_CONTAINER":/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ "$temp_dir/credentials" >/dev/null 2>&1; then
             credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
             if [ $credentials_count -gt 0 ]; then
                 credentials_exported=true
@@ -239,7 +239,7 @@ create_manual_backup() {
 }
 EOF
     
-    local backup_file="$BACKUP_DIR/n8n_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+    local backup_file="$BACKUP_DIR/n8n_backup_"${DOMAIN_CONTAINER}"_$(date +%Y%m%d_%H%M%S).tar.gz"
     
     log_message "INFO" "📦 Tạo file backup..."
     if tar -czf "$backup_file" -C "$temp_dir" . 2>/dev/null; then
@@ -407,13 +407,13 @@ restore_backup() {
             return 0
         fi
     done
-    if ! docker ps --format "table {{.Names}}" | grep -q "^n8n$"; then
-        echo -e "${YELLOW}⚠️ Container n8n không đang chạy, đang khởi động...${NC}"
+    if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
+        echo -e "${YELLOW}⚠️ Container "$DOMAIN_CONTAINER" không đang chạy, đang khởi động...${NC}"
         docker start n8n >/dev/null 2>&1
         sleep 5
         
-        if ! docker ps --format "table {{.Names}}" | grep -q "^n8n$"; then
-            echo -e "${RED}❌ Không thể khởi động container n8n${NC}"
+        if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
+            echo -e "${RED}❌ Không thể khởi động container "$DOMAIN_CONTAINER"${NC}"
             return 1
         fi
     fi
@@ -433,7 +433,7 @@ restore_backup() {
     fi
     
     local backup_content_dir="$temp_restore_dir"
-    log_message "INFO" "📋 Khôi phục workflows using official n8n CLI..."
+    log_message "INFO" "📋 Khôi phục workflows using official "$DOMAIN_CONTAINER" CLI..."
     local workflow_count=0
     local imported_count=0
     
@@ -447,7 +447,7 @@ restore_backup() {
                 
                 log_message "INFO" "Import workflow: $workflow_name"
                 if docker cp "$workflow_file" n8n:/tmp/restore_workflows/ 2>/dev/null; then
-                    if docker exec n8n n8n import:workflow --input="/tmp/restore_workflows/$workflow_name" 2>/dev/null; then
+                    if docker exec "$N8N_CONTAINER" n8n import:workflow --input="/tmp/restore_workflows/$workflow_name" 2>/dev/null; then
                         imported_count=$((imported_count + 1))
                         log_message "SUCCESS" "✅ Đã import: $workflow_name"
                     else
@@ -501,7 +501,7 @@ restore_backup() {
                 
                 log_message "INFO" "📥 Import credentials ($cred_count items): $credentials_name"
                 if docker cp "$temp_import_file" n8n:/tmp/restore_credentials/"$credentials_name" 2>/dev/null; then
-                    local import_output=$(docker exec n8n n8n import:credentials --input="/tmp/restore_credentials/$credentials_name" 2>&1)
+                    local import_output=$(docker exec "$N8N_CONTAINER" n8n import:credentials --input="/tmp/restore_credentials/$credentials_name" 2>&1)
                     local import_status=$?
                     
                     if [ $import_status -eq 0 ]; then
@@ -518,7 +518,7 @@ restore_backup() {
                                 jq ".[$i] | [.]" "$temp_import_file" > "$single_cred_file" 2>/dev/null
                                 
                                 if docker cp "$single_cred_file" n8n:/tmp/restore_credentials/ 2>/dev/null; then
-                                    if docker exec n8n n8n import:credentials --input="/tmp/restore_credentials/$(basename "$single_cred_file")" 2>/dev/null; then
+                                    if docker exec "$N8N_CONTAINER" n8n import:credentials --input="/tmp/restore_credentials/$(basename "$single_cred_file")" 2>/dev/null; then
                                         individual_count=$((individual_count + 1))
                                     fi
                                 fi
@@ -547,10 +547,10 @@ restore_backup() {
         log_message "INFO" "🗄️ Khôi phục PostgreSQL database..."
         
         # Lấy thông tin database từ container
-        local db_host=$(docker exec n8n printenv DB_POSTGRESDB_HOST 2>/dev/null || echo "postgres")
-        local db_name=$(docker exec n8n printenv DB_POSTGRESDB_DATABASE 2>/dev/null || echo "n8n")
-        local db_user=$(docker exec n8n printenv DB_POSTGRESDB_USER 2>/dev/null || echo "n8n")
-        local db_password=$(docker exec n8n printenv DB_POSTGRESDB_PASSWORD 2>/dev/null || echo "")
+        local db_host=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_HOST 2>/dev/null || echo "postgres")
+        local db_name=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_DATABASE 2>/dev/null || echo "n8n")
+        local db_user=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_USER 2>/dev/null || echo "n8n")
+        local db_password=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_PASSWORD 2>/dev/null || echo "")
         
         # Kiểm tra xem container postgres có đang chạy không
         if docker ps --format "table {{.Names}}" | grep -q "postgres\|postgresql"; then
@@ -559,19 +559,19 @@ restore_backup() {
             # Copy file SQL vào container postgres
             if docker cp "$backup_content_dir/database.sql" postgres:/tmp/restore_database.sql 2>/dev/null; then
                 # Drop và tạo lại database (để tránh conflict)
-                docker exec postgres psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_temp;" 2>/dev/null
-                docker exec postgres psql -U "$db_user" -c "CREATE DATABASE ${db_name}_temp;" 2>/dev/null
+                docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_temp;" 2>/dev/null
+                docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "CREATE DATABASE ${db_name}_temp;" 2>/dev/null
                 
                 # Restore vào database tạm
-                if docker exec postgres psql -U "$db_user" -d "${db_name}_temp" -f /tmp/restore_database.sql >/dev/null 2>&1; then
+                if docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -d "${db_name}_temp" -f /tmp/restore_database.sql >/dev/null 2>&1; then
                     # Dừng n8n để đổi tên database
                     docker stop n8n >/dev/null 2>&1
                     sleep 2
                     
                     # Đổi tên database
-                    docker exec postgres psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_old;" 2>/dev/null
-                    docker exec postgres psql -U "$db_user" -c "ALTER DATABASE $db_name RENAME TO ${db_name}_old;" 2>/dev/null
-                    docker exec postgres psql -U "$db_user" -c "ALTER DATABASE ${db_name}_temp RENAME TO $db_name;" 2>/dev/null
+                    docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_old;" 2>/dev/null
+                    docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "ALTER DATABASE $db_name RENAME TO ${db_name}_old;" 2>/dev/null
+                    docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "ALTER DATABASE ${db_name}_temp RENAME TO $db_name;" 2>/dev/null
                     
                     # Khởi động lại n8n
                     docker start n8n >/dev/null 2>&1
@@ -579,14 +579,14 @@ restore_backup() {
                     log_message "SUCCESS" "✅ Đã khôi phục PostgreSQL database thành công"
                     
                     # Xóa database cũ sau 1 phút (để đảm bảo n8n hoạt động tốt)
-                    (sleep 60 && docker exec postgres psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_old;" 2>/dev/null) &
+                    (sleep 60 && docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_old;" 2>/dev/null) &
                 else
                     log_message "ERROR" "❌ Không thể restore PostgreSQL database"
-                    docker exec postgres psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_temp;" 2>/dev/null
+                    docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_temp;" 2>/dev/null
                 fi
                 
                 # Xóa file SQL tạm
-                docker exec postgres rm -f /tmp/restore_database.sql 2>/dev/null
+                docker exec "$POSTGRES_CONTAINER" rm -f /tmp/restore_database.sql 2>/dev/null
             else
                 log_message "ERROR" "❌ Không thể copy file SQL vào container postgres"
             fi
@@ -682,16 +682,16 @@ test_restore_functionality() {
         echo -e "${RED}❌ Docker không hoạt động hoặc không có quyền truy cập${NC}"
     fi
     
-    if docker ps | grep -q "n8n"; then
-        echo -e "${GREEN}✅ Container n8n đang chạy${NC}"
+    if docker ps | grep -q "$N8N_CONTAINER"; then
+        echo -e "${GREEN}✅ Container "$N8N_CONTAINER" đang chạy${NC}"
     else
-        echo -e "${YELLOW}⚠️  Container n8n không đang chạy${NC}"
+        echo -e "${YELLOW}⚠️  Container "$N8N_CONTAINER" không đang chạy${NC}"
     fi
     
     if [ -d "$N8N_DATA_DIR" ]; then
-        echo -e "${GREEN}✅ Thư mục n8n data tồn tại: $N8N_DATA_DIR${NC}"
+        echo -e "${GREEN}✅ Thư mục "$N8N_CONTAINER" data tồn tại: $N8N_DATA_DIR${NC}"
     else
-        echo -e "${YELLOW}⚠️  Thư mục n8n data không tồn tại: $N8N_DATA_DIR${NC}"
+        echo -e "${YELLOW}⚠️  Thư mục "$N8N_CONTAINER" data không tồn tại: $N8N_DATA_DIR${NC}"
     fi
     
     if [ -f "$N8N_DATA_DIR/docker-compose.yml" ]; then
@@ -939,7 +939,7 @@ create_manual_backup_for_instance() {
 
     local current_domain="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
     
-    log_message "INFO" "🚀 Bắt đầu tạo backup cho instance $instance_id ($current_domain) using container $container_name..."
+    log_message "INFO" "🚀 Bắt đầu tạo backup cho instance $instance_id ($current_domain)..."
     
     if ! docker ps --format "table {{.Names}}" | grep -q "^${container_name}$"; then
         log_message "ERROR" "❌ Container $current_domain không đang chạy!"
