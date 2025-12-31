@@ -64,7 +64,7 @@ create_manual_backup() {
         log_message "INFO" "ℹ️ Không tìm thấy PostgreSQL container, sẽ kiểm tra SQLite"
     fi
     
-    local temp_dir="/tmp/n8n_backup_${DOMAIN_CONTAINER}_$(date +%Y%m%d_%H%M%S)"
+    local temp_dir="/tmp/n8n_backup_"${DOMAIN_CONTAINER}"_$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$temp_dir"
     
     local max_retries=5
@@ -408,7 +408,7 @@ restore_backup() {
         fi
     done
     if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
-        echo -e "${YELLOW}⚠️ Container "$DOMAIN_CONTAINER" không đang chạy, đang khởi động...${NC}"
+        echo -e "${YELLOW}⚠️ Container $DOMAIN_CONTAINER không đang chạy, đang khởi động...${NC}"
         docker start "$N8N_CONTAINER" >/dev/null 2>&1
         sleep 5
         
@@ -635,7 +635,7 @@ restore_backup() {
         fi
     fi
     rm -rf "$temp_restore_dir"
-    log_message "INFO" "🔄 Khởi động lại n8n container..."
+    log_message "INFO" "🔄 Khởi động lại $DOMAIN_CONTAINER container..."
     
     # Sử dụng hàm restart an toàn từ restart_manager (bắt buộc)
     if type safe_restart_n8n &>/dev/null; then
@@ -653,8 +653,8 @@ restore_backup() {
     
     log_message "SUCCESS" "✅ Khôi phục hoàn tất!"
     echo -e "\n${GREEN}✅ QUÁ TRÌNH KHÔI PHỤC HOÀN TẤT!${NC}"
-    echo -e "${CYAN}🔗 Truy cập n8n tại: ${PURPLE}https://${restore_domain:-localhost}:5678${NC}"
-    echo -e "${YELLOW}💡 Lưu ý: Có thể cần vài phút để n8n khởi động hoàn tất${NC}"
+    echo -e "${CYAN}🔗 Truy cập $DOMAIN_CONTAINER tại: ${PURPLE}https://${restore_domain:-localhost}:5678${NC}"
+    echo -e "${YELLOW}💡 Lưu ý: Có thể cần vài phút để $DOMAIN_CONTAINER khởi động hoàn tất${NC}"
 }
 
 test_restore_functionality() {
