@@ -2,15 +2,8 @@
 
 # Module Quản lý Backup
 # Chứa các hàm liên quan đến backup và restore N8N
-source "/opt/n8npanel/v3/common/utils.sh"
-source "/opt/n8npanel/v3/common/instance_selector.sh"
-N8N_DATA_DIR="/root/n8n_data"
-BACKUP_DIR="$N8N_DATA_DIR/backups"
 
-N8N_CONTAINER="${SELECTED_CONTAINER:-n8n}"
-POSTGRES_CONTAINER="${SELECTED_POSTGRES:-postgres}"
-DOMAIN_CONTAINER="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
-instance_id="${SELECTED_INSTANCE:-1}"
+
 setup_backup_structure() {
     log_message "INFO" "Thiết lập cấu trúc thư mục backup..."
     
@@ -48,6 +41,15 @@ backup_log() {
 }
 
 create_manual_backup() {
+    source "/opt/n8npanel/v3/common/utils.sh"
+    source "/opt/n8npanel/v3/common/instance_selector.sh"
+    N8N_DATA_DIR="/root/n8n_data"
+    BACKUP_DIR="$N8N_DATA_DIR/backups"
+
+    N8N_CONTAINER="${SELECTED_CONTAINER:-n8n}"
+    POSTGRES_CONTAINER="${SELECTED_POSTGRES:-postgres}"
+    DOMAIN_CONTAINER="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
+    instance_id="${SELECTED_INSTANCE:-1}"
     setup_backup_structure
     log_message "INFO" "🚀 Bắt đầu tạo backup thủ công $DOMAIN_CONTAINER..."
     
@@ -375,6 +377,10 @@ select_backup_file() {
 }
 
 restore_backup() {
+
+    local INSTANCE_ID="${SELECTED_INSTANCE:?missing instance}"
+    local N8N_CONTAINER="${SELECTED_CONTAINER:?missing container}"
+    local DOMAIN_CONTAINER="${SELECTED_DOMAIN:?missing domain}"
     local backup_file="$1"
     if [ -z "$backup_file" ]; then
         select_backup_file
