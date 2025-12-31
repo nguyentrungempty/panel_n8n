@@ -409,7 +409,7 @@ restore_backup() {
     done
     if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
         echo -e "${YELLOW}⚠️ Container "$DOMAIN_CONTAINER" không đang chạy, đang khởi động...${NC}"
-        docker start n8n >/dev/null 2>&1
+        docker start "$N8N_CONTAINER" >/dev/null 2>&1
         sleep 5
         
         if ! docker ps --format "table {{.Names}}" | grep -q "^${N8N_CONTAINER}$"; then
@@ -438,7 +438,7 @@ restore_backup() {
     local imported_count=0
     
     if [ -d "$backup_content_dir/workflows" ] && [ "$(ls -A "$backup_content_dir/workflows"/*.json 2>/dev/null)" ]; then
-        docker exec n8n mkdir -p /tmp/restore_workflows 2>/dev/null
+        docker exec "$N8N_CONTAINER" mkdir -p /tmp/restore_workflows 2>/dev/null
         
         for workflow_file in "$backup_content_dir/workflows"/*.json; do
             if [ -f "$workflow_file" ]; then
@@ -446,7 +446,7 @@ restore_backup() {
                 local workflow_name=$(basename "$workflow_file")
                 
                 log_message "INFO" "Import workflow: $workflow_name"
-                if docker cp "$workflow_file" n8n:/tmp/restore_workflows/ 2>/dev/null; then
+                if docker cp "$workflow_file" "$N8N_CONTAINER":/tmp/restore_workflows/ 2>/dev/null; then
                     if docker exec "$N8N_CONTAINER" n8n import:workflow --input="/tmp/restore_workflows/$workflow_name" 2>/dev/null; then
                         imported_count=$((imported_count + 1))
                         log_message "SUCCESS" "✅ Đã import: $workflow_name"
@@ -458,7 +458,7 @@ restore_backup() {
                 fi
             fi
         done
-        docker exec n8n rm -rf /tmp/restore_workflows/ 2>/dev/null
+        docker exec "$N8N_CONTAINER" rm -rf /tmp/restore_workflows/ 2>/dev/null
         
         log_message "SUCCESS" "✅ Đã khôi phục workflows: $imported_count/$workflow_count"
     else
@@ -468,7 +468,7 @@ restore_backup() {
     local credentials_imported=0
     
     if [ -d "$backup_content_dir/credentials" ] && [ "$(ls -A "$backup_content_dir/credentials"/*.json 2>/dev/null)" ]; then
-        docker exec n8n mkdir -p /tmp/restore_credentials 2>/dev/null
+        docker exec "$N8N_CONTAINER" mkdir -p /tmp/restore_credentials 2>/dev/null
         
         for credentials_file in "$backup_content_dir/credentials"/*.json; do
             if [ -f "$credentials_file" ]; then
@@ -500,7 +500,7 @@ restore_backup() {
                 fi
                 
                 log_message "INFO" "📥 Import credentials ($cred_count items): $credentials_name"
-                if docker cp "$temp_import_file" n8n:/tmp/restore_credentials/"$credentials_name" 2>/dev/null; then
+                if docker cp "$temp_import_file" "$N8N_CONTAINER":/tmp/restore_credentials/"$credentials_name" 2>/dev/null; then
                     local import_output=$(docker exec "$N8N_CONTAINER" n8n import:credentials --input="/tmp/restore_credentials/$credentials_name" 2>&1)
                     local import_status=$?
                     
@@ -517,7 +517,7 @@ restore_backup() {
                                 local single_cred_file="/tmp/single_cred_${i}_$credentials_name"
                                 jq ".[$i] | [.]" "$temp_import_file" > "$single_cred_file" 2>/dev/null
                                 
-                                if docker cp "$single_cred_file" n8n:/tmp/restore_credentials/ 2>/dev/null; then
+                                if docker cp "$single_cred_file" "$N8N_CONTAINER":/tmp/restore_credentials/ 2>/dev/null; then
                                     if docker exec "$N8N_CONTAINER" n8n import:credentials --input="/tmp/restore_credentials/$(basename "$single_cred_file")" 2>/dev/null; then
                                         individual_count=$((individual_count + 1))
                                     fi
@@ -537,7 +537,7 @@ restore_backup() {
                 rm -f "$temp_import_file"
             fi
         done
-        docker exec n8n rm -rf /tmp/restore_credentials/ 2>/dev/null
+        docker exec "$N8N_CONTAINER" rm -rf /tmp/restore_credentials/ 2>/dev/null
         
         log_message "SUCCESS" "✅ Đã khôi phục credentials: $credentials_imported/$credentials_count files processed"
     else
@@ -557,7 +557,7 @@ restore_backup() {
             log_message "INFO" "Tìm thấy PostgreSQL container, đang restore database..."
             
             # Copy file SQL vào container postgres
-            if docker cp "$backup_content_dir/database.sql" postgres:/tmp/restore_database.sql 2>/dev/null; then
+            if docker cp "$backup_content_dir/database.sql" "$POSTGRES_CONTAINER":/tmp/restore_database.sql 2>/dev/null; then
                 # Drop và tạo lại database (để tránh conflict)
                 docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_temp;" 2>/dev/null
                 docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "CREATE DATABASE ${db_name}_temp;" 2>/dev/null
@@ -565,7 +565,7 @@ restore_backup() {
                 # Restore vào database tạm
                 if docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -d "${db_name}_temp" -f /tmp/restore_database.sql >/dev/null 2>&1; then
                     # Dừng n8n để đổi tên database
-                    docker stop n8n >/dev/null 2>&1
+                    docker stop "$N8N_CONTAINER" >/dev/null 2>&1
                     sleep 2
                     
                     # Đổi tên database
@@ -574,7 +574,7 @@ restore_backup() {
                     docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "ALTER DATABASE ${db_name}_temp RENAME TO $db_name;" 2>/dev/null
                     
                     # Khởi động lại n8n
-                    docker start n8n >/dev/null 2>&1
+                    docker start "$N8N_CONTAINER" >/dev/null 2>&1
                     
                     log_message "SUCCESS" "✅ Đã khôi phục PostgreSQL database thành công"
                     
@@ -596,8 +596,8 @@ restore_backup() {
         fi
     elif [ -f "$backup_content_dir/database.sqlite" ]; then
         log_message "INFO" "🗄️ Khôi phục SQLite database..."
-        docker exec n8n mkdir -p /home/node/.n8n 2>/dev/null
-        if docker cp "$backup_content_dir/database.sqlite" n8n:/home/node/.n8n/database.sqlite 2>/dev/null; then
+        docker exec "$N8N_CONTAINER" mkdir -p /home/node/.n8n 2>/dev/null
+        if docker cp "$backup_content_dir/database.sqlite" "$N8N_CONTAINER":/home/node/.n8n/database.sqlite 2>/dev/null; then
             log_message "SUCCESS" "✅ Đã khôi phục SQLite database"
         else
             log_message "WARN" "⚠️ Không thể khôi phục SQLite database"
@@ -605,22 +605,22 @@ restore_backup() {
     fi
     if [ -f "$backup_content_dir/encryptionKey" ]; then
         log_message "INFO" "🔑 Khôi phục encryption key..."
-        if docker cp "$backup_content_dir/encryptionKey" n8n:/home/node/.n8n/encryptionKey 2>/dev/null || \
-           docker cp "$backup_content_dir/encryptionKey" n8n:/data/encryptionKey 2>/dev/null; then
+        if docker cp "$backup_content_dir/encryptionKey" "$N8N_CONTAINER":/home/node/.n8n/encryptionKey 2>/dev/null || \
+           docker cp "$backup_content_dir/encryptionKey" "$N8N_CONTAINER":/data/encryptionKey 2>/dev/null; then
             log_message "SUCCESS" "✅ Đã khôi phục encryption key"
         else
             log_message "WARN" "⚠️ Không thể khôi phục encryption key"
         fi
     fi
     if [ -d "$backup_content_dir/config" ]; then
-        docker cp "$backup_content_dir/config" n8n:/home/node/.n8n/ 2>/dev/null || \
-        docker cp "$backup_content_dir/config" n8n:/data/ 2>/dev/null
+        docker cp "$backup_content_dir/config" "$N8N_CONTAINER":/home/node/.n8n/ 2>/dev/null || \
+        docker cp "$backup_content_dir/config" "$N8N_CONTAINER":/data/ 2>/dev/null
         log_message "INFO" "📁 Đã khôi phục config files"
     fi
     
     if [ -d "$backup_content_dir/custom" ]; then
-        docker cp "$backup_content_dir/custom" n8n:/home/node/.n8n/ 2>/dev/null || \
-        docker cp "$backup_content_dir/custom" n8n:/data/ 2>/dev/null
+        docker cp "$backup_content_dir/custom" "$N8N_CONTAINER":/home/node/.n8n/ 2>/dev/null || \
+        docker cp "$backup_content_dir/custom" "$N8N_CONTAINER":/data/ 2>/dev/null
         log_message "INFO" "📁 Đã khôi phục custom nodes"
     fi
     if [ -f "$backup_content_dir/backup_info.json" ]; then
