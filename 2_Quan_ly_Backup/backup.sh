@@ -292,7 +292,7 @@ create_manual_backup() {
     
     log_message "INFO" "📝 Tạo metadata backup..."
     local backup_timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local n8n_version=$(docker exec "$N8N_CONTAINER" n8n --version 2>/dev/null | grep -o 'n8n@[0-9.]*' || echo "unknown")
+    local n8n_version=$(docker exec "$N8N_CONTAINER" n8n --version 2>/dev/null || echo "unknown")
     local server_ip=$(curl -s ifconfig.me 2>/dev/null || echo "unknown")
     
     cat > "$temp_dir/backup_info.json" <<EOF
