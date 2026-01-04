@@ -5,7 +5,16 @@
 
 readonly RESTART_LOCK_FILE="/tmp/n8n_restart.lock"
 readonly RESTART_LOCK_TIMEOUT=300  # 5 phút
+N8N_CONTAINER="${SELECTED_CONTAINER:-n8n}"
+POSTGRES_CONTAINER="${SELECTED_POSTGRES:-postgres}"
+DOMAIN_CONTAINER="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
+instance_id="${SELECTED_INSTANCE:-1}"
 
+init_backup_context() {
+    SELECTED_INSTANCE="${SELECTED_INSTANCE:?missing instance}"
+    SELECTED_CONTAINER="${SELECTED_CONTAINER:?missing container}"
+    SELECTED_DOMAIN="${SELECTED_DOMAIN:?missing domain}"
+}
 # Kiểm tra xem container có đang restart không
 is_container_restarting() {
     local container_name="$1"
@@ -48,36 +57,36 @@ safe_restart_n8n() {
     local wait_for_ready="${1:-true}"  # Mặc định đợi container sẵn sàng
     
     # Kiểm tra xem có đang restart không
-    if is_container_restarting "n8n"; then
-        log_message "WARNING" "Container n8n đang được restart bởi thao tác khác, vui lòng đợi..."
+    if is_container_restarting "$N8N_CONTAINER"; then
+        log_message "WARNING" "Container "$N8N_CONTAINER" đang được restart bởi thao tác khác, vui lòng đợi..."
         
         # Đợi tối đa 60 giây
         local wait_count=0
-        while is_container_restarting "n8n" && [ $wait_count -lt 12 ]; do
+        while is_container_restarting "$N8N_CONTAINER" && [ $wait_count -lt 12 ]; do
             sleep 5
             wait_count=$((wait_count + 1))
         done
         
-        if is_container_restarting "n8n"; then
+        if is_container_restarting "$N8N_CONTAINER"; then
             log_message "ERROR" "Timeout khi đợi restart hoàn tất"
             return 1
         fi
         
-        log_message "SUCCESS" "Container n8n đã được restart bởi thao tác trước"
+        log_message "SUCCESS" "Container "$N8N_CONTAINER" đã được restart bởi thao tác trước"
         return 0
     fi
     
     # Tạo lock
     create_restart_lock
     
-    log_message "INFO" "🔄 Đang restart container n8n..."
+    log_message "INFO" "🔄 Đang restart container "$N8N_CONTAINER"..."
     
     # Restart container
-    if docker restart n8n >/dev/null 2>&1; then
+    if docker restart "$N8N_CONTAINER" >/dev/null 2>&1; then
         log_message "SUCCESS" "✅ Đã gửi lệnh restart thành công"
         
         if [ "$wait_for_ready" = "true" ]; then
-            log_message "INFO" "⏳ Đang đợi n8n khởi động..."
+            log_message "INFO" "⏳ Đang đợi "$N8N_CONTAINER" khởi động..."
             sleep 5
             
             # Đợi container sẵn sàng
@@ -85,9 +94,9 @@ safe_restart_n8n() {
             local max_retries=12
             
             while [ $retry_count -lt $max_retries ]; do
-                if docker ps --format "{{.Names}}" | grep -q "^n8n$"; then
+                if docker ps --format "{{.Names}}" | grep -q "^$N8N_CONTAINER$"; then
                     if curl -s -f "http://localhost:5678" >/dev/null 2>&1; then
-                        log_message "SUCCESS" "✅ Container n8n đã sẵn sàng"
+                        log_message "SUCCESS" "✅ Container "$N8N_CONTAINER" đã sẵn sàng"
                         remove_restart_lock
                         return 0
                     fi
@@ -99,7 +108,7 @@ safe_restart_n8n() {
                 fi
             done
             
-            log_message "WARNING" "⚠️  Container n8n có thể cần thêm thời gian để khởi động"
+            log_message "WARNING" "⚠️  Container "$N8N_CONTAINER" có thể cần thêm thời gian để khởi động"
         fi
         
         remove_restart_lock
@@ -115,24 +124,24 @@ safe_restart_n8n() {
 safe_restart_postgres() {
     local wait_for_ready="${1:-true}"
     
-    if is_container_restarting "postgres"; then
-        log_message "WARNING" "Container postgres đang được restart bởi thao tác khác"
+    if is_container_restarting "$POSTGRES_CONTAINER"; then
+        log_message "WARNING" "Container "$POSTGRES_CONTAINER" đang được restart bởi thao tác khác"
         return 1
     fi
     
     create_restart_lock
     
-    log_message "INFO" "🔄 Đang restart container postgres..."
+    log_message "INFO" "🔄 Đang restart container "$POSTGRES_CONTAINER"..."
     
-    if docker restart postgres >/dev/null 2>&1; then
-        log_message "SUCCESS" "✅ Đã gửi lệnh restart postgres thành công"
+    if docker restart "$POSTGRES_CONTAINER" >/dev/null 2>&1; then
+        log_message "SUCCESS" "✅ Đã gửi lệnh restart "$POSTGRES_CONTAINER" thành công"
         
         if [ "$wait_for_ready" = "true" ]; then
-            log_message "INFO" "⏳ Đang đợi postgres sẵn sàng..."
+            log_message "INFO" "⏳ Đang đợi "$POSTGRES_CONTAINER" sẵn sàng..."
             sleep 3
             
             # Đọc DB user từ .env hoặc container
-            local db_user="postgres"
+            local db_user="$POSTGRES_CONTAINER"
             local env_file="$N8N_DATA_DIR/.env"
             if [ -f "$env_file" ]; then
                 local env_db_user=$(grep "^DB_USER=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d ' ')
@@ -146,12 +155,12 @@ safe_restart_postgres() {
             local max_retries=12
             
             while [ $retry_count -lt $max_retries ]; do
-                if docker ps --format "{{.Names}}" | grep -q "^postgres$"; then
+                if docker ps --format "{{.Names}}" | grep -q "^$POSTGRES_CONTAINER$"; then
                     # Kiểm tra pg_isready
-                    if docker exec postgres pg_isready -U "$db_user" >/dev/null 2>&1; then
+                    if docker exec "$POSTGRES_CONTAINER" pg_isready -U "$db_user" >/dev/null 2>&1; then
                         # Kiểm tra thêm bằng query thực tế
-                        if docker exec postgres psql -U "$db_user" -c "SELECT 1" >/dev/null 2>&1; then
-                            log_message "SUCCESS" "✅ Container postgres đã sẵn sàng và có thể query"
+                        if docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "SELECT 1" >/dev/null 2>&1; then
+                            log_message "SUCCESS" "✅ Container "$POSTGRES_CONTAINER" đã sẵn sàng và có thể query"
                             remove_restart_lock
                             return 0
                         fi
@@ -164,7 +173,7 @@ safe_restart_postgres() {
                 fi
             done
             
-            log_message "WARNING" "⚠️  Container postgres có thể cần thêm thời gian để khởi động"
+            log_message "WARNING" "⚠️  Container "$POSTGRES_CONTAINER" có thể cần thêm thời gian để khởi động"
         fi
         
         remove_restart_lock
