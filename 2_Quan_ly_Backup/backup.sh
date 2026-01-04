@@ -718,7 +718,7 @@ restore_backup() {
         fi
     fi
     rm -rf "$temp_restore_dir"
-    log_message "INFO" "🔄 Khởi động lại $DOMAIN_CONTAINER container..."
+    log_message "INFO" "🔄 Khởi động lại "$N8N_CONTAINER" container..."
     
     # Sử dụng hàm restart an toàn từ restart_manager (bắt buộc)
     if type safe_restart_n8n &>/dev/null; then
