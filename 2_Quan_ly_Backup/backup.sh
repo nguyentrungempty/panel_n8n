@@ -101,14 +101,15 @@ create_manual_backup() {
     #     return 1
     # fi
     
-    log_message "INFO" "📋 Exporting workflows using official $DOMAIN_CONTAINER CLI..."
+    log_message "INFO" "📋 Exporting workflows using official $temp_dir CLI..."
     local workflow_exported=false
     local workflow_count=0
     
     docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows/"$DOMAIN_CONTAINER" 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" export:workflow --backup --output=/tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output=/tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":/tmp/backup_workflows/"$DOMAIN_CONTAINER" "$temp_dir/workflows" >/dev/null 2>&1; then
+            mkdir -p "$temp_dir/workflows"
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
                 workflow_exported=true
@@ -134,8 +135,9 @@ create_manual_backup() {
     
     docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_credentials/"$DOMAIN_CONTAINER" 2>/dev/null
     
-    if timeout 60 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" export:credentials --backup --output=/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
+    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:credentials --backup --output=/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
         if docker cp "$N8N_CONTAINER":/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ "$temp_dir/credentials" >/dev/null 2>&1; then
+            mkdir -p "$temp_dir/workflows"
             credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
             if [ $credentials_count -gt 0 ]; then
                 credentials_exported=true
@@ -152,6 +154,12 @@ create_manual_backup() {
         log_message "ERROR" "❌ Lỗi khi export credentials"
         echo "Lỗi export credentials" > "$temp_dir/credentials_export_error.txt"
     fi
+
+    if ! $workflow_exported && ! $credentials_exported; then
+        log_message "ERROR" "Không export được workflows và credentials → backup không hợp lệ"
+        return 1
+    fi
+
     
     docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_credentials/"$DOMAIN_CONTAINER" >/dev/null 2>&1
     
