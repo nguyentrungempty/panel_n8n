@@ -23,6 +23,12 @@ setup_backup_structure() {
     log_message "SUCCESS" "Đã thiết lập cấu trúc backup tại: $BACKUP_DIR"
 }
 
+init_backup_context() {
+    SELECTED_INSTANCE="${SELECTED_INSTANCE:?missing instance}"
+    SELECTED_CONTAINER="${SELECTED_CONTAINER:?missing container}"
+    SELECTED_DOMAIN="${SELECTED_DOMAIN:?missing domain}"
+}
+
 backup_log() {
     local operation="$1"
     local status="$2"
