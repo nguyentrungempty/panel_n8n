@@ -101,71 +101,111 @@ create_manual_backup() {
     #     return 1
     # fi
     
-    log_message "INFO" "📋 Exporting workflows using official $temp_dir CLI..."
-    local workflow_exported=false
-    local workflow_count=0
+    log_message "INFO" "📋 Exporting workflows using official $N8N_CONTAINER CLI..."
+    # local workflow_exported=false
+    # local workflow_count=0
     
-    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows/"$DOMAIN_CONTAINER" 2>/dev/null
-    log_message "DEBUG" "N8N_CONTAINER=$N8N_CONTAINER"
+    # docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows/"$DOMAIN_CONTAINER" 2>/dev/null
 
-    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output=/tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
-        log_message "DEBUG" "N8N_CONTAINER=$N8N_CONTAINER"
+    # if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output=/tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
+    #     if docker cp "$N8N_CONTAINER":/tmp/backup_workflows/"$DOMAIN_CONTAINER" "$temp_dir/workflows" >/dev/null 2>&1; then
+    #         mkdir -p "$temp_dir/workflows"
+    #         workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
+    #         if [ $workflow_count -gt 0 ]; then
+    #             workflow_exported=true
+    #             log_message "INFO" "✅ Đã export $workflow_count workflows thành công"
+    #         else
+    #             log_message "WARN" "⚠️ Không có workflows nào để export"
+    #             echo "Không có workflows nào trong $DOMAIN_CONTAINER" > "$temp_dir/no_workflows.txt"
+    #         fi
+    #     else
+    #         log_message "ERROR" "❌ Không thể copy workflows từ container"
+    #         echo "Lỗi copy workflows từ container" > "$temp_dir/workflow_export_error.txt"
+    #     fi
+    # else
+    #     log_message "ERROR" "❌ Lỗi khi export workflows"
+    #     echo "Lỗi export workflows" > "$temp_dir/workflow_export_error.txt"
+    # fi
 
-        if docker cp "$N8N_CONTAINER":/tmp/backup_workflows/"$DOMAIN_CONTAINER" "$temp_dir/workflows" >/dev/null 2>&1; then
-            log_message "DEBUG" "N8N_CONTAINER=$N8N_CONTAINER"
+    CONTAINER_EXPORT_DIR="/tmp/backup_workflows"
 
-            mkdir -p "$temp_dir/workflows"
-            workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
-            if [ $workflow_count -gt 0 ]; then
-                workflow_exported=true
-                log_message "INFO" "✅ Đã export $workflow_count workflows thành công"
-            else
-                log_message "WARN" "⚠️ Không có workflows nào để export"
-                echo "Không có workflows nào trong $DOMAIN_CONTAINER" > "$temp_dir/no_workflows.txt"
-            fi
-        else
-            log_message "ERROR" "❌ Không thể copy workflows từ container"
-            echo "Lỗi copy workflows từ container" > "$temp_dir/workflow_export_error.txt"
-        fi
+    docker exec "$N8N_CONTAINER" rm -rf "$CONTAINER_EXPORT_DIR" || true
+    docker exec "$N8N_CONTAINER" mkdir -p "$CONTAINER_EXPORT_DIR" || true
+
+    # Chạy export, KHÔNG dựa vào exit code
+    docker exec "$N8N_CONTAINER" \
+    n8n export:workflow --backup --output="$CONTAINER_EXPORT_DIR" >/dev/null 2>&1 || true
+
+    # Copy về host
+    mkdir -p "$temp_dir/workflows"
+    docker cp "$N8N_CONTAINER":"$CONTAINER_EXPORT_DIR"/. "$temp_dir/workflows/" 2>/dev/null || true
+
+    # Đếm file
+    workflow_count=$(find "$temp_dir/workflows" -name '*.json' 2>/dev/null | wc -l)
+
+    if [ "$workflow_count" -gt 0 ]; then
+        workflow_exported=true
+        log_message "SUCCESS" "Exported $workflow_count workflows"
     else
-        log_message "ERROR" "❌ Lỗi khi export workflows"
-        echo "Lỗi export workflows" > "$temp_dir/workflow_export_error.txt"
-    fi
-    
-    docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1
-    
-    log_message "INFO" "🔐 Exporting credentials using official $DOMAIN_CONTAINER CLI..."
-    local credentials_exported=false
-    local credentials_count=0
-    
-    docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_credentials/"$DOMAIN_CONTAINER" 2>/dev/null
-    
-    if timeout 60 docker exec "$N8N_CONTAINER" n8n export:credentials --backup --output=/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
-        if docker cp "$N8N_CONTAINER":/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ "$temp_dir/credentials" >/dev/null 2>&1; then
-            mkdir -p "$temp_dir/workflows"
-            credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
-            if [ $credentials_count -gt 0 ]; then
-                credentials_exported=true
-                log_message "INFO" "✅ Đã export $credentials_count credentials thành công"
-            else
-                log_message "WARN" "⚠️ Không có credentials nào để export"
-                echo "Không có credentials nào trong $DOMAIN_CONTAINER" > "$temp_dir/no_credentials.txt"
-            fi
-        else
-            log_message "ERROR" "❌ Không thể copy credentials từ container"
-            echo "Lỗi copy credentials từ container" > "$temp_dir/credentials_export_error.txt"
-        fi
-    else
-        log_message "ERROR" "❌ Lỗi khi export credentials"
-        echo "Lỗi export credentials" > "$temp_dir/credentials_export_error.txt"
+        workflow_exported=false
+        log_message "INFO" "Instance không có workflow nào (bình thường)"
     fi
 
-    if ! $workflow_exported && ! $credentials_exported; then
-        log_message "ERROR" "Không export được workflows và credentials → backup không hợp lệ"
+    
+    # docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1
+    
+    # log_message "INFO" "🔐 Exporting credentials using official $DOMAIN_CONTAINER CLI..."
+    # local credentials_exported=false
+    # local credentials_count=0
+    
+    # docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_credentials/"$DOMAIN_CONTAINER" 2>/dev/null
+    
+    # if timeout 60 docker exec "$N8N_CONTAINER" n8n export:credentials --backup --output=/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
+    #     if docker cp "$N8N_CONTAINER":/tmp/backup_credentials/"$DOMAIN_CONTAINER"/ "$temp_dir/credentials" >/dev/null 2>&1; then
+    #         mkdir -p "$temp_dir/workflows"
+    #         credentials_count=$(find "$temp_dir/credentials/" -name "*.json" 2>/dev/null | wc -l)
+    #         if [ $credentials_count -gt 0 ]; then
+    #             credentials_exported=true
+    #             log_message "INFO" "✅ Đã export $credentials_count credentials thành công"
+    #         else
+    #             log_message "WARN" "⚠️ Không có credentials nào để export"
+    #             echo "Không có credentials nào trong $DOMAIN_CONTAINER" > "$temp_dir/no_credentials.txt"
+    #         fi
+    #     else
+    #         log_message "ERROR" "❌ Không thể copy credentials từ container"
+    #         echo "Lỗi copy credentials từ container" > "$temp_dir/credentials_export_error.txt"
+    #     fi
+    # else
+    #     log_message "ERROR" "❌ Lỗi khi export credentials"
+    #     echo "Lỗi export credentials" > "$temp_dir/credentials_export_error.txt"
+    # fi
+
+    CONTAINER_CRED_DIR="/tmp/backup_credentials"
+
+    docker exec "$N8N_CONTAINER" rm -rf "$CONTAINER_CRED_DIR" || true
+    docker exec "$N8N_CONTAINER" mkdir -p "$CONTAINER_CRED_DIR" || true
+
+    docker exec "$N8N_CONTAINER" \
+    n8n export:credentials --backup --output="$CONTAINER_CRED_DIR" >/dev/null 2>&1 || true
+
+    mkdir -p "$temp_dir/credentials"
+    docker cp "$N8N_CONTAINER":"$CONTAINER_CRED_DIR"/. "$temp_dir/credentials/" 2>/dev/null || true
+
+    credentials_count=$(find "$temp_dir/credentials" -name '*.json' 2>/dev/null | wc -l)
+
+    if [ "$credentials_count" -gt 0 ]; then
+        credentials_exported=true
+    else
+        credentials_exported=false
+        log_message "INFO" "Instance chưa có credentials (bình thường)"
+    fi
+
+
+    if ! $workflow_exported && ! $credentials_exported && ! $database_included; then
+        log_message "ERROR" "Backup không có dữ liệu nào"
         return 1
     fi
 
-    
     docker exec "$N8N_CONTAINER" rm -rf /tmp/backup_credentials/"$DOMAIN_CONTAINER" >/dev/null 2>&1
     
     log_message "INFO" "🗄️ Backup database..."
