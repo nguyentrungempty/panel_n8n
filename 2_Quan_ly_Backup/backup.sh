@@ -2,8 +2,16 @@
 
 # Module Quản lý Backup
 # Chứa các hàm liên quan đến backup và restore N8N
+source "/opt/n8npanel/v3/common/utils.sh"
+source "/opt/n8npanel/v3/common/instance_selector.sh"
+source "/opt/n8npanel/v3/common/domain_manager.sh"
+N8N_DATA_DIR="/root/n8n_data"
+BACKUP_DIR="$N8N_DATA_DIR/backups"
 
-
+N8N_CONTAINER="${SELECTED_CONTAINER:-n8n}"
+POSTGRES_CONTAINER="${SELECTED_POSTGRES:-postgres}"
+DOMAIN_CONTAINER="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
+instance_id="${SELECTED_INSTANCE:-1}"
 setup_backup_structure() {
     log_message "INFO" "Thiết lập cấu trúc thư mục backup..."
     
@@ -41,15 +49,6 @@ backup_log() {
 }
 
 create_manual_backup() {
-    source "/opt/n8npanel/v3/common/utils.sh"
-    source "/opt/n8npanel/v3/common/instance_selector.sh"
-    N8N_DATA_DIR="/root/n8n_data"
-    BACKUP_DIR="$N8N_DATA_DIR/backups"
-
-    N8N_CONTAINER="${SELECTED_CONTAINER:-n8n}"
-    POSTGRES_CONTAINER="${SELECTED_POSTGRES:-postgres}"
-    DOMAIN_CONTAINER="${SELECTED_DOMAIN:-$(get_current_domain 2>/dev/null || echo 'N/A')}"
-    instance_id="${SELECTED_INSTANCE:-1}"
     setup_backup_structure
     log_message "INFO" "🚀 Bắt đầu tạo backup thủ công $DOMAIN_CONTAINER..."
     
@@ -377,10 +376,6 @@ select_backup_file() {
 }
 
 restore_backup() {
-
-    local INSTANCE_ID="${SELECTED_INSTANCE:?missing instance}"
-    local N8N_CONTAINER="${SELECTED_CONTAINER:?missing container}"
-    local DOMAIN_CONTAINER="${SELECTED_DOMAIN:?missing domain}"
     local backup_file="$1"
     if [ -z "$backup_file" ]; then
         select_backup_file
@@ -553,9 +548,9 @@ restore_backup() {
         log_message "INFO" "🗄️ Khôi phục PostgreSQL database..."
         
         # Lấy thông tin database từ container
-        local db_host=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_HOST 2>/dev/null || echo "postgres")
-        local db_name=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_DATABASE 2>/dev/null || echo "n8n")
-        local db_user=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_USER 2>/dev/null || echo "n8n")
+        local db_host=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_HOST 2>/dev/null || echo "$POSTGRES_CONTAINER")
+        local db_name=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_DATABASE 2>/dev/null || echo "$N8N_CONTAINER")
+        local db_user=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_USER 2>/dev/null || echo "$N8N_CONTAINER")
         local db_password=$(docker exec "$N8N_CONTAINER" printenv DB_POSTGRESDB_PASSWORD 2>/dev/null || echo "")
         
         # Kiểm tra xem container postgres có đang chạy không
@@ -648,7 +643,7 @@ restore_backup() {
         safe_restart_n8n "true"
     else
         log_message "ERROR" "Module restart_manager chưa được load"
-        echo -e "${YELLOW}💡 Vui lòng restart thủ công: docker restart n8n${NC}"
+        echo -e "${YELLOW}💡 Vui lòng restart thủ công: docker restart "$N8N_CONTAINER"${NC}"
     fi
     
     # Đọc domain từ source of truth
