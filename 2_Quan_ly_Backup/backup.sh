@@ -71,20 +71,35 @@ create_manual_backup() {
     local max_retries=5
     local retry_count=0
     while [ $retry_count -lt $max_retries ]; do
-        if timeout 10 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" --version >/dev/null 2>&1; then
-            log_message "INFO" "✅ Container $DOMAIN_CONTAINER đã sẵn sàng"
+        if docker inspect -f '{{.State.Running}}' "$N8N_CONTAINER" 2>/dev/null | grep -q true; then
+            log_message "INFO" "✅ Container $DOMAIN_CONTAINER đang chạy"
             break
         fi
         retry_count=$((retry_count + 1))
-        log_message "WARN" "⏳ Chờ container $DOMAIN_CONTAINER sẵn sàng (lần thử $retry_count/$max_retries)..."
+        log_message "WARN" "⏳ Chờ container $DOMAIN_CONTAINER chạy (lần $retry_count/$max_retries)..."
         sleep 2
     done
-    
+
     if [ $retry_count -eq $max_retries ]; then
-        log_message "ERROR" "❌ Container $DOMAIN_CONTAINER không phản hồi sau $max_retries lần thử"
-        rm -rf "$temp_dir"
+        log_message "ERROR" "❌ Container $DOMAIN_CONTAINER không chạy sau $max_retries lần thử"
         return 1
     fi
+
+    # while [ $retry_count -lt $max_retries ]; do
+    #     if timeout 10 docker exec "$N8N_CONTAINER" "$N8N_CONTAINER" --version >/dev/null 2>&1; then
+    #         log_message "INFO" "✅ Container $DOMAIN_CONTAINER đã sẵn sàng"
+    #         break
+    #     fi
+    #     retry_count=$((retry_count + 1))
+    #     log_message "WARN" "⏳ Chờ container $DOMAIN_CONTAINER sẵn sàng (lần thử $retry_count/$max_retries)..."
+    #     sleep 2
+    # done
+    
+    # if [ $retry_count -eq $max_retries ]; then
+    #     log_message "ERROR" "❌ Container $DOMAIN_CONTAINER không phản hồi sau $max_retries lần thử"
+    #     rm -rf "$temp_dir"
+    #     return 1
+    # fi
     
     log_message "INFO" "📋 Exporting workflows using official $DOMAIN_CONTAINER CLI..."
     local workflow_exported=false
