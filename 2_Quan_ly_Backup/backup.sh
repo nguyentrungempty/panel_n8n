@@ -106,9 +106,14 @@ create_manual_backup() {
     local workflow_count=0
     
     docker exec "$N8N_CONTAINER" mkdir -p /tmp/backup_workflows/"$DOMAIN_CONTAINER" 2>/dev/null
-    
+    log_message "DEBUG" "N8N_CONTAINER=$N8N_CONTAINER"
+
     if timeout 60 docker exec "$N8N_CONTAINER" n8n export:workflow --backup --output=/tmp/backup_workflows/"$DOMAIN_CONTAINER"/ >/dev/null 2>&1; then
+        log_message "DEBUG" "N8N_CONTAINER=$N8N_CONTAINER"
+
         if docker cp "$N8N_CONTAINER":/tmp/backup_workflows/"$DOMAIN_CONTAINER" "$temp_dir/workflows" >/dev/null 2>&1; then
+            log_message "DEBUG" "N8N_CONTAINER=$N8N_CONTAINER"
+
             mkdir -p "$temp_dir/workflows"
             workflow_count=$(find "$temp_dir/workflows/" -name "*.json" 2>/dev/null | wc -l)
             if [ $workflow_count -gt 0 ]; then
