@@ -101,7 +101,7 @@ create_manual_backup() {
     #     return 1
     # fi
     
-    log_message "INFO" "📋 Exporting workflows using official $N8N_CONTAINER CLI..."
+    log_message "INFO" "📋 Exporting workflows using official "$N8N_CONTAINER" CLI..."
     # local workflow_exported=false
     # local workflow_count=0
     
@@ -444,6 +444,11 @@ select_backup_file() {
 }
 
 restore_backup() {
+    # 🔒 FIX cứng context restore
+    DOMAIN_CONTAINER="${SELECTED_DOMAIN}"
+    N8N_CONTAINER="${SELECTED_CONTAINER}"
+    POSTGRES_CONTAINER="${SELECTED_POSTGRES}"
+
     local backup_file="$1"
     if [ -z "$backup_file" ]; then
         select_backup_file
@@ -648,7 +653,10 @@ restore_backup() {
                     log_message "SUCCESS" "✅ Đã khôi phục "$POSTGRES_CONTAINER" database thành công"
                     
                     # Xóa database cũ sau 1 phút (để đảm bảo n8n hoạt động tốt)
-                    (sleep 60 && docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_old;" 2>/dev/null) &
+                    nohup sh -c "sleep 60 && docker exec '$POSTGRES_CONTAINER' \
+                        psql -U '$db_user' -c 'DROP DATABASE IF EXISTS ${db_name}_old;'" \
+                        >/dev/null 2>&1 &
+                    # (sleep 60 && docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_old;" 2>/dev/null) &
                 else
                     log_message "ERROR" "❌ Không thể restore "$POSTGRES_CONTAINER" database"
                     docker exec "$POSTGRES_CONTAINER" psql -U "$db_user" -c "DROP DATABASE IF EXISTS ${db_name}_temp;" 2>/dev/null
@@ -715,7 +723,7 @@ restore_backup() {
     fi
     
     # Đọc domain từ source of truth
-    local restore_domain=""
+    local restore_domain="$DOMAIN_CONTAINER"
     if type get_current_domain &>/dev/null; then
         restore_domain=$(get_current_domain)
     fi
